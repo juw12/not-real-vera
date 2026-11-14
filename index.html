@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not Real Vera: I'm not real. The scams are.</title>
+<meta name="description" content="Short videos on scam and deepfake defence, hosted by a presenter who says she is an AI. One scam, one 10-second check, one official source.">
+<style>
+  :root {
+    --ink: #f3efe6;
+    --muted: #a9a394;
+    --paper: #14130f;
+    --panel: #1d1b16;
+    --line: #34302a;
+    --amber: #ffb020;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 17px/1.55 Georgia, "Times New Roman", serif;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 56px 24px 80px; }
+  header { display: grid; grid-template-columns: 148px 1fr; gap: 28px; align-items: center; }
+  header img { width: 148px; height: 148px; object-fit: cover; object-position: 50% 22%; border-radius: 50%; border: 2px solid var(--amber); }
+  h1 { font-size: 46px; line-height: 1.05; margin: 0 0 10px; letter-spacing: -0.5px; }
+  .tag { font-size: 22px; color: var(--amber); margin: 0 0 12px; font-style: italic; }
+  .lede { color: var(--muted); max-width: 60ch; margin: 0; }
+  .badge {
+    display: inline-block; margin-top: 16px; padding: 4px 10px;
+    border: 1px solid var(--line); border-radius: 4px;
+    font: 13px/1.4 Consolas, "Courier New", monospace; color: var(--muted);
+  }
+  h2 { font-size: 24px; margin: 56px 0 6px; }
+  .note { color: var(--muted); margin: 0 0 22px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 22px; }
+  article { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  video, .waiting { display: block; width: 100%; aspect-ratio: 9 / 16; background: #0c0b09; }
+  .waiting { display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--muted); font-style: italic; }
+  .body { padding: 16px 18px 18px; }
+  .pillar { font: 12px/1.4 Consolas, "Courier New", monospace; color: var(--amber); text-transform: uppercase; letter-spacing: 1px; }
+  h3 { font-size: 20px; line-height: 1.25; margin: 6px 0 10px; }
+  .check { margin: 0 0 12px; }
+  .check b { color: var(--amber); font-weight: normal; }
+  .source { font-size: 14px; color: var(--muted); margin: 0; }
+  a { color: var(--ink); }
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+  @media (max-width: 620px) {
+    header { grid-template-columns: 1fr; }
+    h1 { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="assets/vera.jpg" alt="Vera, an AI-generated presenter. The person does not exist.">
+    <div>
+      <h1>Not Real Vera</h1>
+      <p class="tag">I'm not real. The scams are.</p>
+      <p class="lede">I'm an AI. I show you how an AI would write the scam in your inbox, then give you one
+        10-second check that stops it. Every check comes from an official alert.</p>
+      <span class="badge">Host, voice and portrait are AI-generated</span>
+    </div>
+  </header>
+
+  <h2>Episodes</h2>
+  <p class="note" id="note">Loading the episode list.</p>
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    Scripts, sources and the tools that make and schedule these videos are in the
+    <a href="https://github.com/juw12/not-real-vera">repository</a>.
+    This is general safety information, not legal or financial advice. Report fraud to your bank and your
+    national fraud reporting service.
+  </footer>
+</main>
+<script>
+  function element(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) {
+      node.className = className;
+    }
+    if (text) {
+      node.textContent = text;
+    }
+    return node;
+  }
+
+  function waitingPanel() {
+    return element("div", "waiting", "Not published yet. This episode is waiting for human approval.");
+  }
+
+  function episodeCard(episode) {
+    const card = element("article");
+    const video = element("video");
+    video.controls = true;
+    video.preload = "metadata";
+    video.playsInline = true;
+    video.src = "media/" + episode.id + ".mp4";
+    video.addEventListener("error", function () {
+      video.replaceWith(waitingPanel());
+    });
+    card.appendChild(video);
+
+    const body = element("div", "body");
+    body.appendChild(element("div", "pillar", episode.pillar));
+    body.appendChild(element("h3", "", episode.title));
+    const check = element("p", "check");
+    check.appendChild(element("b", "", "The check: "));
+    check.appendChild(document.createTextNode(episode.check));
+    body.appendChild(check);
+    const source = element("p", "source");
+    const link = element("a", "", episode.source.name);
+    link.href = episode.source.url;
+    link.rel = "noopener";
+    source.appendChild(document.createTextNode("Source: "));
+    source.appendChild(link);
+    body.appendChild(source);
+    card.appendChild(body);
+    return card;
+  }
+
+  fetch("episodes.json")
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (data) {
+      const grid = document.getElementById("grid");
+      data.episodes.forEach(function (episode) {
+        grid.appendChild(episodeCard(episode));
+      });
+      document.getElementById("note").textContent =
+        "Five launch episodes. Each one is watched and approved by a person before it appears here.";
+    })
+    .catch(function () {
+      document.getElementById("note").textContent = "The episode list could not be loaded.";
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "prompt": "candid smartphone selfie-video still of a fictional woman, early thirties, chin-length dark brown bob, friendly direct eye contact, slight smile, plain charcoal crew-neck sweater, sitting at a home desk, warm lamp and bookshelf softly out of focus behind her, head and shoulders in the upper half of the frame, real photograph, natural skin pores, slight asymmetry, unretouched, natural window light, 35mm",
+  "person": "fictional, AI-generated; not a real person",
+  "placeholder": false,
+  "service": "image.pollinations.ai (free tier; keeps the service's small corner mark)",
+  "native_size": [
+    576,
+    1024
+  ],
+  "model": "flux-realism",
+  "seed": 11
+}

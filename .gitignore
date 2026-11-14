@@ -1,0 +1,20 @@
+# Renders and working files (approved episodes are copied to media/ by "autopost.py publish")
+output/
+# What has been approved and scheduled on this machine
+state/
+# Voice model, 120 MB: fetch with tools/get_voice_model.py
+models/
+# Portrait trials
+assets/candidates/
+# Local run history, judge logs and posting logs
+hone/
+refine_log.md
+logs/
+__pycache__/
+*.pyc
+# Never commit keys
+*.key
+buffer_key.txt
+secrets.json
+.env
+.pytest_cache/

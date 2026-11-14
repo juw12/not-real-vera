@@ -1,0 +1,47 @@
+input CreatePostInput { aiAssisted: Boolean; assets: [AssetInput!]!; channelId: ChannelId!; draftId: DraftId; dueAt: DateTime; ideaId: IdeaId; metadata: PostInputMetaData; mode: ShareMode!; needsApproval: Boolean!; saveToDraft: Boolean; schedulingType: SchedulingType!; source: String; tagIds: [TagId!]; text: String }
+input AssetInput { document: DocumentAssetInput; image: ImageAssetInput; video: VideoAssetInput }
+input ChannelId {  }
+input DraftId {  }
+input IdeaId {  }
+input PostInputMetaData { bluesky: BlueskyPostMetadataInput; facebook: FacebookPostMetadataInput; google: GoogleBusinessPostMetadataInput; instagram: InstagramPostMetadataInput; linkedin: LinkedInPostMetadataInput; mastodon: MastodonPostMetadataInput; pinterest: PinterestPostMetadataInput; substack: SubstackPostMetadataInput; threads: ThreadsPostMetadataInput; tiktok: TikTokPostMetadataInput; twitter: TwitterPostMetadataInput; youtube: YoutubePostMetadataInput }
+enum ShareMode: addToQueue, customScheduled, shareNext, shareNow
+enum SchedulingType: automatic, notification
+input TagId {  }
+input DocumentAssetInput { thumbnailUrl: String!; title: String!; url: String! }
+input ImageAssetInput { metadata: ImageMetadataInput; thumbnailUrl: String; url: String! }
+input VideoAssetInput { metadata: VideoMetadataInput; thumbnailUrl: String; url: String! }
+input BlueskyPostMetadataInput { linkAttachment: LinkAttachmentInput; thread: [ThreadedPostInput!] }
+input FacebookPostMetadataInput { annotations: [AnnotationInputFacebook!]; firstComment: String; linkAttachment: LinkAttachmentInput; type: PostTypeFacebook! }
+input GoogleBusinessPostMetadataInput { detailsEvent: GoogleBusinessEventMetaDataInput; detailsOffer: GoogleBusinessOfferMetaDataInput; detailsWhatsNew: GoogleBusinessWhatsNewMetaDataInput; title: String; type: PostTypeGoogleBusiness! }
+input InstagramPostMetadataInput { firstComment: String; geolocation: InstagramGeolocationInput; isAiGenerated: Boolean; link: String; shouldShareToFeed: Boolean!; stickerFields: InstagramStickerFieldsInput; type: PostType! }
+input LinkedInPostMetadataInput { annotations: [AnnotationInputLinkedIn!]; firstComment: String; linkAttachment: LinkAttachmentInput }
+input MastodonPostMetadataInput { spoilerText: String; thread: [ThreadedPostInput!] }
+input PinterestPostMetadataInput { boardServiceId: String; title: String; url: String }
+input SubstackPostMetadataInput { linkAttachment: LinkAttachmentInput }
+input ThreadsPostMetadataInput { linkAttachment: LinkAttachmentInput; locationId: String; locationName: String; thread: [ThreadedPostInput!]; topic: String; type: PostType }
+input TikTokPostMetadataInput { isAiGenerated: Boolean; title: String }
+input TwitterPostMetadataInput { isAiGenerated: Boolean; retweet: RetweetMetadataInput; thread: [ThreadedPostInput!] }
+input YoutubePostMetadataInput { categoryId: String; embeddable: Boolean; isAiGenerated: Boolean; license: YoutubeLicense; madeForKids: Boolean; notifySubscribers: Boolean; privacy: YoutubePrivacy; title: String }
+input ImageMetadataInput { altText: String!; animatedThumbnail: String; userTags: [UserTagInput!] }
+input VideoMetadataInput { thumbnailOffset: Int; title: String }
+input LinkAttachmentInput { description: String; thumbnail: LinkAttachmentThumbnailInput; title: String; url: String! }
+input ThreadedPostInput { assets: [AssetInput!]!; metadata: ThreadItemMetadataInput; text: String }
+input AnnotationInputFacebook { content: String!; indices: [Int!]!; text: String!; url: String! }
+enum PostTypeFacebook: post, reel, story
+input GoogleBusinessEventMetaDataInput { button: GoogleBusinessPostActionType; endDate: DateTime; isFullDayEvent: Boolean!; link: String; startDate: DateTime; title: String }
+input GoogleBusinessOfferMetaDataInput { code: String; endDate: DateTime; link: String; startDate: DateTime; terms: String; title: String }
+input GoogleBusinessWhatsNewMetaDataInput { button: GoogleBusinessPostActionType; link: String }
+enum PostTypeGoogleBusiness: event, offer, whats_new
+input InstagramGeolocationInput { id: String; text: String }
+input InstagramStickerFieldsInput { music: String; other: String; products: String; text: String; topics: String }
+enum PostType: carousel, event, ghost_post, offer, post, reel, short, story, thread, whats_new
+input AnnotationInputLinkedIn { id: String!; entity: String!; length: Int!; link: String!; localizedName: String!; start: Int!; vanityName: String! }
+input RetweetMetadataInput { id: String!; comment: String }
+enum YoutubeLicense: creativeCommon, youtube
+enum YoutubePrivacy: private, public, unlisted
+input UserTagInput { handle: String!; x: Float!; y: Float! }
+input LinkAttachmentThumbnailInput { url: String! }
+input ThreadItemMetadataInput { bluesky: ThreadItemBlueskyMetadataInput; threads: ThreadItemThreadsMetadataInput }
+enum GoogleBusinessPostActionType: book, call, learn_more, none, order, shop, signup
+input ThreadItemBlueskyMetadataInput { linkAttachment: LinkAttachmentInput }
+input ThreadItemThreadsMetadataInput { linkAttachment: LinkAttachmentInput }
