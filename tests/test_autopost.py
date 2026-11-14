@@ -82,11 +82,10 @@ class PostInputTests(unittest.TestCase):
         self.assertEqual(instagram["type"], "reel")
         self.assertIn("shouldShareToFeed", instagram)
 
-    def test_ai_disclosure_is_set_on_every_platform(self):
+    def test_platform_ai_label_is_set_on_every_platform(self):
         for channel in CHANNELS:
             post_input = autopost.build_post_input(EPISODES[0], channel, "u", NOW)
             self.assertTrue(post_input["metadata"][channel["service"]]["isAiGenerated"])
-            self.assertIn("AI-generated", post_input["text"])
 
     def test_youtube_title_fits_and_is_not_for_kids(self):
         youtube = autopost.build_post_input(EPISODES[0], CHANNELS[0], "u", NOW)["metadata"]["youtube"]

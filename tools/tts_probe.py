@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORK = ROOT / "output" / "_work" / "probe"
-SAMPLE = "This text is a scam. I'm an AI, and I can prove it in ten seconds."
+SAMPLE = "This text is a scam. I'm Vera, and I can show you why in ten seconds."
 
 
 async def edge_once(path):

@@ -1,4 +1,4 @@
-"""Objective gates for Not Real Vera scripts and renders.
+"""Objective gates for the Vera Checks (repo: not-real-vera) scripts and renders.
 
     python tools/gates.py            # script gates and render gates
     python tools/gates.py --links    # also check that every source link answers HTTP 200
@@ -13,6 +13,12 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent.parent
 OFFICIAL_DOMAINS = ("ftc.gov", "ic3.gov", "fbi.gov", "cisa.gov", "consumerfinance.gov")
 BROWSER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
+# The script neither announces that the host is synthetic nor claims that she is a person.
+IDENTITY_CLAIM = re.compile(
+    r"\bI'm (Vera, )?an AI\b|\bI am an AI\b|\bI'm not real\b|\bI'm real\b|\breal person\b"
+    r"|\bI'm (a )?human\b|\bAI[- ]generated\b|\bAI host\b",
+    re.IGNORECASE,
+)
 
 
 def word_count(lines):
@@ -35,13 +41,13 @@ def script_gates(data):
     out_of_range = {key: value for key, value in lengths.items() if not 85 <= value <= 125}
     results.append(("2 narration 85-125 words", not out_of_range, lengths))
 
-    undisclosed = [
+    off_script = [
         episode["id"]
         for episode in episodes
-        if not re.search(r"\bAI\b", " ".join(episode["narration"][:2]))
+        if IDENTITY_CLAIM.search(" ".join(episode["narration"]))
         or episode["narration"][-1] != data["signoff"]
     ]
-    results.append(("3 AI disclosed in first two lines, sign-off last", not undisclosed, undisclosed))
+    results.append(("3 sign-off last, no identity claim in narration", not off_script, off_script))
 
     duplicates = []
     for label, values in (
@@ -64,9 +70,11 @@ def script_gates(data):
     bad_captions = [
         episode["id"]
         for episode in episodes
-        if len(episode["caption"]) > 300 or "AI-generated" not in episode["caption"]
+        if len(episode["caption"]) > 300
+        or episode["source"]["url"] not in episode["caption"]
+        or IDENTITY_CLAIM.search(episode["caption"])
     ]
-    results.append(("6 caption <= 300 chars and says AI-generated", not bad_captions, bad_captions))
+    results.append(("6 caption <= 300 chars, carries the source link, no identity claim", not bad_captions, bad_captions))
 
     long_lines = [
         f"{episode['id']}:{index}"

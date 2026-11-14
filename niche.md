@@ -4,11 +4,11 @@ Date: 2026-11-14. Method: live web searches, read as search summaries (the sourc
 
 ## The short answer
 
-**Scam and deepfake defence, taught by a host who openly says she is an AI.**
+**Scam and deepfake defence: one scam, one 10-second check, one official source per video.**
 
-Working name: **Not Real Vera** (`@notrealvera`). Tagline: *"I'm not real. The scams are."*
+Working name: **Vera Checks** (`@verachecks`). Tagline: *"Ten seconds. Check first."*
 
-The usual weakness of an AI avatar (people do not trust a fake person) becomes the reason to watch: an AI shows you how an AI would trick you, then gives one 10-second check that stops it.
+Revision, 2026-11-14: the first version of this research positioned the host as openly AI ("Not Real Vera") and counted that as the main differentiator. The owner chose to drop the on-screen AI framing and present Vera as a realistic presenter. The niche choice below is unchanged. Point 3 under "Why this gap exists" and the "avatar fit" score for candidate A were written for the openly-AI premise and are weaker without it; what still carries the channel is the format (short, sourced, one check).
 
 ## What the evidence says
 
@@ -39,7 +39,7 @@ Weights: demand 0.25, gap 0.25, avatar fit 0.20, monetisation 0.15, source suppl
 
 | Candidate | Demand | Gap | Avatar fit | Monetisation | Safety | Weighted |
 |---|---|---|---|---|---|---|
-| A. Scam and deepfake defence, openly-AI host | 5 | 4 | 5 | 4 | 5 | **4.60** |
+| A. Scam and deepfake defence (scored with the openly-AI host) | 5 | 4 | 5 | 4 | 5 | **4.60** |
 | B. Finance explainers | 4 | 4 | 3 | 4 | 2 | 3.50 |
 | C. Tech and AI tutorials | 4 | 3 | 3 | 4 | 3 | 3.40 |
 | D. AI news and facts | 3 | 2 | 3 | 3 | 3 | 2.75 |

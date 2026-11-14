@@ -6,6 +6,10 @@ state/
 models/
 # Portrait trials
 assets/candidates/
+# Local talking-head engine (venv, SadTalker clone, weights) and the clips it makes
+.presenter/
+assets/presenter/
+assets/presenter.mp4
 # Local run history, judge logs and posting logs
 hone/
 refine_log.md

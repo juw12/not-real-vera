@@ -1,4 +1,4 @@
-"""Schedule rendered Not Real Vera episodes to YouTube Shorts, Instagram Reels and TikTok through Buffer.
+"""Schedule rendered Vera Checks episodes to YouTube Shorts, Instagram Reels and TikTok through Buffer.
 
     python pipeline/autopost.py check            # which channels are connected, which videos are reachable
     python pipeline/autopost.py approve ep01     # you watched it and it may go out ("all" approves every render)
@@ -88,7 +88,8 @@ def post_text(episode):
 
 
 def build_post_input(episode, channel, video_url, due_at):
-    """One CreatePostInput. The AI-generated flag is set on every platform; that is not optional for this channel."""
+    """One CreatePostInput. The platform AI-content label is set on every platform: the three platforms require it for a
+    realistic synthetic presenter, and it is the only place the channel states it."""
     post_input = {
         "channelId": channel["id"],
         "text": post_text(episode),
@@ -272,7 +273,7 @@ def command_publish(state):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Not Real Vera autoposter (Buffer)")
+    parser = argparse.ArgumentParser(description="Vera Checks autoposter (Buffer)")
     parser.add_argument("command", choices=["check", "approve", "publish", "plan", "post"])
     parser.add_argument("episode", nargs="?", help="for approve: an episode id, or 'all'")
     parser.add_argument("--live", action="store_true", help="really schedule the posts")

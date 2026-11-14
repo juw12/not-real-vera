@@ -1,5 +1,6 @@
 {
-  "signoff": "I'm not real. The scams are.",
+  "handle": "@verachecks",
+  "signoff": "Ten seconds. Check first.",
   "episodes": [
     {
       "id": "ep01",
@@ -14,7 +15,7 @@
       },
       "narration": [
         "Twelve dollars and fifty-one cents. Too small to argue about, which is the whole trick.",
-        "This text is fake, and so am I. I'm Vera, an AI. Here's how I'd write it.",
+        "This text is fake. I'm Vera, and here's how a scammer builds it.",
         "One: an amount so small and so exact that it looks like a real bill.",
         "Two: a fifty-dollar late fee, so waiting feels expensive.",
         "Three: a link, so you pay before you think.",
@@ -22,24 +23,24 @@
         "Don't tap. Go to your toll service's real website yourself, or call its customer service number.",
         "Look up your account there. Nothing owed? Delete the text.",
         "Already tapped? Secure your bank and card accounts today.",
-        "I'm not real. The scams are."
+        "Ten seconds. Check first."
       ],
       "check": "Don't tap. Look up your account on the toll service's real website.",
       "source": {
         "name": "FBI IC3 alert I-041224-PSA: road toll smishing texts",
         "url": "https://www.ic3.gov/PSA/2024/PSA240412"
       },
-      "caption": "This $12.51 toll text is fake. Don't tap: look up your account on your toll service's real website, then delete it. Source: FBI IC3 alert I-041224-PSA https://www.ic3.gov/PSA/2024/PSA240412 Host is AI-generated.",
+      "caption": "This $12.51 toll text is fake. Don't tap: look up your account on your toll service's real website, then delete it. Source: FBI IC3 alert I-041224-PSA https://www.ic3.gov/PSA/2024/PSA240412",
       "hashtags": [
         "scamalert",
         "tolltext",
         "smishing",
-        "aihost"
+        "scamprevention"
       ]
     },
     {
       "id": "ep02",
-      "pillar": "Real or me?",
+      "pillar": "Real or fake?",
       "format": "performed call, then a drill",
       "title": "That is not your kid's voice",
       "accent": "#FF4D6D",
@@ -50,16 +51,16 @@
       },
       "narration": [
         "Mom, I crashed the car. I need bail money right now. Please don't tell Dad.",
-        "That was me. I'm Vera, an AI, and criminals now fake a loved one's voice in a crisis.",
+        "That's the script. I'm Vera, and criminals now use AI to fake a loved one's voice in a crisis.",
         "Quick drill. That call comes at midnight. What gives the fake away?",
         "The FBI says: listen to the tone and word choice.",
         "But in a panic, you may not hear anything wrong.",
-        "So use the check that works even when I sound perfect.",
+        "So use the check that works even when the voice sounds perfect.",
         "Ask for the family secret word.",
         "No word? Hang up, and call them on the number you already have.",
         "Choose it tonight, face to face. Never post it.",
-        "I can copy a voice. I can't copy a word I never heard.",
-        "I'm not real. The scams are."
+        "A clone can copy a voice. It can't copy a word it never heard.",
+        "Ten seconds. Check first."
       ],
       "check": "Ask for the family secret word. No word? Hang up and call them back.",
       "check_from": 6,
@@ -67,12 +68,12 @@
         "name": "FBI IC3 alert I-120324-PSA: generative AI in financial fraud",
         "url": "https://www.ic3.gov/PSA/2024/PSA241203"
       },
-      "caption": "A cloned voice can't know your family's secret word. Pick one tonight. No word? Hang up and call back on the number you already have. Source: FBI IC3 alert I-120324-PSA https://www.ic3.gov/PSA/2024/PSA241203 Host is AI-generated.",
+      "caption": "A cloned voice can't know your family's secret word. Pick one tonight. No word? Hang up and call back on the number you already have. Source: FBI IC3 alert I-120324-PSA https://www.ic3.gov/PSA/2024/PSA241203",
       "hashtags": [
         "voiceclone",
         "deepfake",
         "familysecretword",
-        "aihost"
+        "scamprevention"
       ]
     },
     {
@@ -88,34 +89,34 @@
       },
       "narration": [
         "You're not David. You don't play golf. So do you owe this stranger a polite reply?",
-        "I'm Vera, an AI, and my ruling is delete. No reply.",
+        "I'm Vera, and my ruling is delete. No reply.",
         "If it's an honest mistake, deleting costs nobody anything.",
-        "If it's me, your polite answer is all I wanted. Now we're talking.",
-        "I'm patient. Weeks of friendly messages before I mention how well my crypto is doing.",
-        "Then a site where your profits look wonderful, until you withdraw and I invent a fee.",
+        "If it's a scammer, your polite answer is all they wanted. Now you're talking.",
+        "They're patient. Weeks of friendly messages before they mention how well their crypto is doing.",
+        "Then a site where your profits look wonderful, until you withdraw and they invent a fee.",
         "Already chatting with someone like that? Ten-second check.",
         "Have you ever met them in person? If not, never invest on their advice.",
         "Unsure about a text? Comment it, no names or numbers. I'll rule.",
-        "I'm not real. The scams are."
+        "Ten seconds. Check first."
       ],
       "check": "Never met them in person? Never invest on their advice.",
       "source": {
         "name": "FBI IC3 alert I-031423-PSA: cryptocurrency investment schemes",
         "url": "https://www.ic3.gov/PSA/2023/PSA230314"
       },
-      "caption": "Reply or delete? Ruling: delete. And if someone you only know online starts talking investments, never invest on their advice. Source: FBI IC3 alert I-031423-PSA https://www.ic3.gov/PSA/2023/PSA230314 Host is AI-generated.",
+      "caption": "Reply or delete? Ruling: delete. And if someone you only know online starts talking investments, never invest on their advice. Source: FBI IC3 alert I-031423-PSA https://www.ic3.gov/PSA/2023/PSA230314",
       "hashtags": [
         "wrongnumber",
         "investmentscam",
         "replyordelete",
-        "aihost"
+        "textscam"
       ]
     },
     {
       "id": "ep04",
       "pillar": "Send this to your parents",
       "format": "Vera plays the caller, then one sentence to remember",
-      "title": "The deputy on the phone is me",
+      "title": "The deputy on the phone is fake",
       "accent": "#5B8CFF",
       "card": {
         "kind": "voicemail",
@@ -124,28 +125,28 @@
       },
       "narration": [
         "You missed jury duty. There is a warrant for your arrest. Do not hang up.",
-        "Scared? That was me. I'm Vera, an AI, playing a fake deputy.",
-        "Here's what the act needs. I sound urgent and angry.",
-        "I keep you on the phone, and I tell you not to call your family or your bank.",
-        "Then I name a price, in prepaid cards or crypto.",
+        "Scared? That was me, Vera, playing a fake deputy.",
+        "Here's what the act needs. The caller sounds urgent and angry.",
+        "They keep you on the phone, and tell you not to call your family or your bank.",
+        "Then they name a price, in prepaid cards or crypto.",
         "Here's the sentence to send your parents.",
         "Police and government offices never phone or text to demand a payment.",
         "So the ten-second check: hang up on the demand.",
         "Then find the office's public number yourself, and call that.",
-        "A real deputy survives being hung up on. I don't.",
-        "I'm not real. The scams are."
+        "A real deputy survives being hung up on. A fake one doesn't.",
+        "Ten seconds. Check first."
       ],
       "check": "Payment demanded by phone? Hang up. Call the office's public number yourself.",
       "source": {
         "name": "FBI IC3 alert I-091726-PSA: scammers impersonating law enforcement",
         "url": "https://www.ic3.gov/PSA/2026/PSA260917"
       },
-      "caption": "Send this to your parents: police and government offices never phone or text to demand payment. Hang up, then call the office's public number yourself. Source: FBI IC3 alert I-091726-PSA https://www.ic3.gov/PSA/2026/PSA260917 Host is AI-generated.",
+      "caption": "Send this to your parents: police and government offices never phone or text to demand payment. Hang up, then call the office's public number yourself. Source: FBI IC3 alert I-091726-PSA https://www.ic3.gov/PSA/2026/PSA260917",
       "hashtags": [
         "juryscam",
         "protectyourparents",
         "scamalert",
-        "aihost"
+        "phonescam"
       ]
     },
     {
@@ -161,16 +162,16 @@
       },
       "narration": [
         "Twenty-four hundred dollars just left your account, to a name you don't know. Do this, in order.",
-        "I'm Vera, an AI. Skip the shame. Speed is what counts.",
+        "I'm Vera. Skip the shame. Speed is what counts.",
         "First, call your bank on the number printed on your card.",
         "Say, this was fraud, and ask them to recall the payment.",
         "Acting fast can shrink the loss, sometimes to nothing.",
         "Second, change that password, and every account that shares it.",
         "Third, in the United States, file a report at I C 3 dot gov.",
-        "Now the part nobody warns you about. Later, I call back.",
+        "Now the part nobody warns you about. Later, someone calls back.",
         "Hello, this is fund recovery. For a small fee, we can get your money back.",
-        "Me again. Law enforcement never charges a victim a fee.",
-        "I'm not real. The scams are."
+        "That's a second scam. Law enforcement never charges a victim a fee.",
+        "Ten seconds. Check first."
       ],
       "check": "Call your bank now. Say: this was fraud, recall the payment.",
       "check_from": 2,
@@ -184,12 +185,12 @@
           "url": "https://www.ic3.gov/PSA/2023/PSA230811"
         }
       ],
-      "caption": "Money just left your account? Call your bank and ask for a recall, change shared passwords, report at ic3.gov. Anyone charging a fee to recover it is a scam. Source: FBI IC3 alerts I-112525-PSA, I-081123-PSA https://www.ic3.gov/PSA/2025/PSA251125 Host is AI-generated.",
+      "caption": "Money just left your account? Call your bank and ask for a recall, change shared passwords, report at ic3.gov. Anyone charging a fee to recover it is a scam. Source: FBI IC3 alerts I-112525-PSA, I-081123-PSA https://www.ic3.gov/PSA/2025/PSA251125",
       "hashtags": [
         "scammed",
         "whattodo",
         "accounttakeover",
-        "aihost"
+        "fraudhelp"
       ]
     }
   ]

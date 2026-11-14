@@ -1,10 +1,11 @@
-# Not Real Vera
+# Vera Checks
 
-*"I'm not real. The scams are."*
+*"Ten seconds. Check first."*
 
-A short-video channel about scam and deepfake defence, hosted by a presenter who says in the first two lines
-that she is an AI. Each 35-45 second episode shows one scam, how an AI would write it, and one 10-second check
-that stops it. Every check is traced to an official alert that was opened and read.
+(The repo is still named `not-real-vera`, the project's first working title.)
+
+A short-video channel about scam and deepfake defence with one on-camera presenter, Vera. Each 35-45 second
+episode shows one scam, how it is built to work on you, and one 10-second check that stops it. Every check is traced to an official alert that was opened and read.
 
 This repo holds the whole channel as files: the niche research, the channel rules, five scripted episodes,
 the renderer that turns a script into a vertical video, and the tool that schedules approved episodes to
@@ -23,6 +24,7 @@ approve them.
 | `docs/sources/` | The text of each FBI IC3 alert the scripts were written from |
 | `pipeline/make_episode.py` | Renders one episode to a 1080x1920 video with voice, captions and sound cues |
 | `pipeline/autopost.py` | Schedules approved episodes through Buffer. Dry run unless you add `--live` |
+| `tools/presenter_kit.py` | Makes the talking presenter clip for an episode, or exports what an avatar tool needs |
 | `tools/gates.py` | Nine pass/fail checks on scripts and renders |
 | `tests/test_autopost.py` | Offline tests for the scheduler |
 | `rubric.md` | The frozen scoring rubric the scripts were judged against |
@@ -36,7 +38,32 @@ python pipeline/make_episode.py ep01     # or: all
 python tools/gates.py --links            # nine checks, including that every source link answers
 ```
 
-Renders land in `output/`. On a laptop without a graphics card one episode takes about five minutes.
+Renders land in `output/`. On a busy laptop without a graphics card one episode took 12 to 22 minutes
+in the two measured runs; most of that is drawing the frames in Python.
+
+## Presenter
+
+The renderer looks for the presenter in this order: `assets/presenter/<id>.mp4` (a talking clip made from that
+episode's own voice track, played in sync), then `assets/presenter.mp4` (a generic clip, looped), then the still
+portrait `assets/vera.jpg`. The five episodes in `output/` currently use the still portrait.
+
+To get a talking presenter:
+
+```
+python tools/presenter_kit.py export all     # writes output/_work/<id>/voice.wav for each episode
+python tools/presenter_kit.py status         # which episodes already have a clip
+```
+
+Give `assets/vera.jpg` and one `voice.wav` to an audio-driven avatar tool, save the result as
+`assets/presenter/<id>.mp4`, and render that episode again. Keep the full audio length and do not trim the
+start, or the lips drift.
+
+`python tools/presenter_kit.py sadtalker ep01` runs the open-source SadTalker model locally instead. It needs a
+separate setup in `.presenter/` (not in this repo): a virtual environment with CPU PyTorch, a clone of SadTalker
+with its weights, a few small patches for NumPy 2, and `ffmpeg.exe` in `.presenter/bin`. SadTalker moves lips,
+eyes and head on a 256-pixel face. It does not move hands or body. On the laptop this was built on (no graphics
+card) it ran through audio analysis but the face renderer did not finish its first 4 frames in five and a half
+minutes, so no episode uses it. It needs a machine with a graphics card.
 
 ## Post them
 
@@ -58,28 +85,29 @@ python pipeline/autopost.py post --live    # schedules one episode on all three 
    which schedules the next approved episode. Unapproved episodes are never published or scheduled, and an
    episode is never scheduled twice.
 
-Posts are marked as AI-generated on all three platforms, and the caption ends with "Host is AI-generated."
+Posts carry each platform's own AI-content label (YouTube, Instagram and TikTok require it for a realistic
+synthetic presenter). The videos and captions themselves do not mention it.
 
 ## Rules the channel keeps
 
-- Vera never pretends to be human and never uses a real person's face, voice or name.
+- Vera never claims a human life story, a job or credentials, and never uses a real person's face, voice or name.
 - No statistic is spoken unless its source page was opened and read.
 - Example links use `.example` domains. No real company is named as the scammer's disguise.
 - One human approves every episode before it goes out.
 
 ## What is not good enough yet
 
-- Vera is a still AI portrait with camera movement, not a lip-synced talking head. Drop a lip-synced clip at
-  `assets/presenter.mp4` and the renderer uses it instead.
+- The rendered episodes show Vera as a still portrait with camera movement. Her lips, face and hands do not
+  move. A talking clip per episode fixes that; see "Presenter".
 - One synthetic voice plays every part, so the "performed" scam calls do not change voice.
-- The portrait is a free-tier image, upscaled, and keeps a small pollinations.ai corner mark.
 - The numbers in `niche.md` come from search summaries and are marked by confidence. The scoring matrix is a
   judgement, not a measurement.
-- Whether the handle `@notrealvera` is free has not been checked.
+- Whether the handle `@verachecks` is free has not been checked.
 - "Beats the market" is a hypothesis. The 30-day test in `niche.md` is what decides it.
 
 ## Credits
 
 - Voice: [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) (Apache-2.0), run locally.
-- Portrait: generated with [pollinations.ai](https://pollinations.ai). The person does not exist.
+- Portrait: generated with FLUX.1-schnell. The person does not exist.
+- Optional lip-sync: [SadTalker](https://github.com/OpenTalker/SadTalker) (Apache-2.0). Not used in the current renders.
 - Sources: FBI Internet Crime Complaint Center public service announcements, [ic3.gov](https://www.ic3.gov).

@@ -1,13 +1,15 @@
-"""Render one Not Real Vera episode as a 1080x1920 short with voice, sound cues and short captions.
+"""Render one Vera Checks episode as a 1080x1920 short with voice, sound cues and short captions.
 
     python pipeline/make_episode.py ep01
     python pipeline/make_episode.py all
 
-Presenter layer: if assets/presenter.mp4 exists (a lip-synced clip from any talking-head tool) it is used as the
-moving background. Without it the presenter is a still AI portrait with camera motion, and the metadata says so.
+Presenter layer, first match wins: assets/presenter/<id>.mp4 (a talking-head clip made for that episode's own
+voice track, played in sync), assets/presenter.mp4 (a generic looped clip), then the still assets/vera.jpg with
+camera motion. The metadata file records which one was used.
 """
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -41,7 +43,7 @@ TAIL = 1.1
 MAX_CAPTION_WORDS = 3
 CARD_BOTTOM = 1250
 CAPTION_CENTER_Y = 1370
-HANDLE = "@notrealvera"
+DEFAULT_HANDLE = "@verachecks"
 FONT_FILES = [r"C:\Windows\Fonts\segoeuib.ttf", r"C:\Windows\Fonts\arialbd.ttf"]
 
 
@@ -116,8 +118,11 @@ def synthesize_line(text, work_dir, index):
     if TTS_ENGINE == "edge":
         path = work_dir / f"line{index:02d}.mp3"
         return path, asyncio.run(speak_with_edge(text, path))
-    path = work_dir / f"line{index:02d}.wav"
-    return path, speak_with_kokoro(text, path)
+    digest = hashlib.sha1(f"{KOKORO_VOICE}|{KOKORO_SPEED}|{text}".encode("utf-8")).hexdigest()[:10]
+    path = work_dir / f"line{index:02d}_{digest}.wav"
+    if not path.exists():
+        speak_with_kokoro(text, path)
+    return path, []
 
 
 def decode_audio(path):
@@ -312,7 +317,7 @@ def render_text_line(text, size, fill, max_width=980):
     return np.asarray(image)
 
 
-def render_end_card(signoff, source_name, accent):
+def render_end_card(signoff, handle, source_name, accent):
     image = Image.new("RGBA", (WIDTH, 760), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
     big = load_font(104)
@@ -322,8 +327,8 @@ def render_end_card(signoff, source_name, accent):
         fill = accent + (255,) if index == len(parts) - 1 else (255, 255, 255, 255)
         draw.text((WIDTH // 2, y + 60), part, font=big, fill=fill, anchor="mm", stroke_width=6, stroke_fill=(8, 8, 12, 255))
         y += 136
-    draw.text((WIDTH // 2, y + 70), HANDLE, font=load_font(56), fill=(255, 255, 255, 255), anchor="mm")
-    draw.text((WIDTH // 2, y + 150), "AI-generated host. Advice from the source below.", font=load_font(32), fill=(200, 206, 220, 255), anchor="mm")
+    draw.text((WIDTH // 2, y + 70), handle, font=load_font(56), fill=(255, 255, 255, 255), anchor="mm")
+    draw.text((WIDTH // 2, y + 150), "Advice from the official source below.", font=load_font(32), fill=(200, 206, 220, 255), anchor="mm")
     source_font = load_font(30)
     for row, line in enumerate(wrap_text("Source: " + source_name, source_font, 940)[:3]):
         draw.text((WIDTH // 2, y + 220 + row * 42), line, font=source_font, fill=(200, 206, 220, 255), anchor="mm")
@@ -352,48 +357,84 @@ def ease_out(progress):
 
 
 class Presenter:
-    """The moving presenter layer: a lip-synced clip when supplied, otherwise the still portrait with motion."""
+    """The presenter layer.
 
-    def __init__(self):
+    Order of preference:
+    1. assets/presenter/<episode id>.mp4: a talking clip made from that episode's voice track
+       (tools/presenter_kit.py). It is played once, locked to the timeline, so the lips match the audio.
+    2. assets/presenter.mp4: one generic clip, looped (no lip-sync to the words).
+    3. assets/vera.jpg: the still portrait with camera motion only.
+    """
+
+    def __init__(self, episode_id):
         self.capture = None
-        clip = ASSETS / "presenter.mp4"
-        if clip.exists():
-            self.capture = cv2.VideoCapture(str(clip))
-            self.mode = "presenter video (assets/presenter.mp4)"
+        self.synced = False
+        self.clip_fps = float(FPS)
+        self.clip_index = -1
+        self.last_frame = None
+        episode_clip = ASSETS / "presenter" / f"{episode_id}.mp4"
+        generic_clip = ASSETS / "presenter.mp4"
+        if episode_clip.exists():
+            self.capture = cv2.VideoCapture(str(episode_clip))
+            self.clip_fps = self.capture.get(cv2.CAP_PROP_FPS) or 25.0
+            self.synced = True
+            self.mode = f"lip-synced presenter clip (assets/presenter/{episode_id}.mp4)"
+        elif generic_clip.exists():
+            self.capture = cv2.VideoCapture(str(generic_clip))
+            self.mode = "looped presenter video without lip-sync (assets/presenter.mp4)"
         else:
-            self.mode = "still AI portrait with camera motion (no lip-sync)"
+            self.mode = "still portrait with camera motion (no lip-sync)"
         portrait_path = ASSETS / "vera.jpg"
         if not portrait_path.exists():
             raise SystemExit("assets/vera.jpg is missing. Run: python pipeline/make_portrait.py")
-        self.portrait = np.asarray(Image.open(portrait_path).convert("RGB").resize((WIDTH, HEIGHT), Image.LANCZOS))
+        self.portrait = self.fit(np.asarray(Image.open(portrait_path).convert("RGB")))
         rows = np.arange(HEIGHT, dtype=np.float32)
         top = np.clip(0.72 + 0.28 * rows / 300.0, 0.0, 1.0)
-        bottom = np.clip(1.0 - 0.62 * (rows - 820.0) / (HEIGHT - 820.0), 0.36, 1.0)
+        bottom = np.clip(1.0 - 0.88 * (rows - 900.0) / 560.0, 0.12, 1.0)
         self.shade = np.minimum(top, bottom).reshape(HEIGHT, 1, 1)
 
-    def source_frame(self):
-        if self.capture is None:
-            return self.portrait
-        ok, frame = self.capture.read()
-        if not ok:
-            self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            ok, frame = self.capture.read()
-        if not ok:
-            return self.portrait
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    @staticmethod
+    def fit(frame):
+        """Scale and centre-crop a frame so it covers the whole 1080x1920 picture."""
         scale = max(WIDTH / frame.shape[1], HEIGHT / frame.shape[0])
-        frame = cv2.resize(frame, (math.ceil(frame.shape[1] * scale), math.ceil(frame.shape[0] * scale)))
+        size = (math.ceil(frame.shape[1] * scale), math.ceil(frame.shape[0] * scale))
+        frame = cv2.resize(frame, size, interpolation=cv2.INTER_LANCZOS4)
         left = (frame.shape[1] - WIDTH) // 2
         top = (frame.shape[0] - HEIGHT) // 2
         return frame[top:top + HEIGHT, left:left + WIDTH]
 
+    def read(self):
+        ok, frame = self.capture.read()
+        if not ok:
+            return None
+        return self.fit(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+    def source_frame(self, time_s):
+        if self.capture is None:
+            return self.portrait
+        if self.synced:
+            # Advance the clip to the frame that belongs to this moment; hold the last one when it ends.
+            target = int(time_s * self.clip_fps)
+            while self.clip_index < target:
+                frame = self.read()
+                if frame is None:
+                    break
+                self.last_frame = frame
+                self.clip_index += 1
+            return self.last_frame if self.last_frame is not None else self.portrait
+        frame = self.read()
+        if frame is None:
+            self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            frame = self.read()
+        return frame if frame is not None else self.portrait
+
     def frame(self, time_s, punch):
-        zoom = 1.05 + 0.02 * math.sin(2 * math.pi * time_s / 11.0) + punch
-        center_x = WIDTH / 2 + 14 * math.sin(2 * math.pi * time_s / 17.0)
-        center_y = HEIGHT * 0.36
+        zoom = 1.03 + 0.012 * math.sin(2 * math.pi * time_s / 11.0) + punch
+        center_x = WIDTH / 2 + 8 * math.sin(2 * math.pi * time_s / 17.0)
+        center_y = HEIGHT * 0.26
         matrix = np.float32([[zoom, 0, (1 - zoom) * center_x], [0, zoom, (1 - zoom) * center_y]])
         moved = cv2.warpAffine(
-            self.source_frame(), matrix, (WIDTH, HEIGHT), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT
+            self.source_frame(time_s), matrix, (WIDTH, HEIGHT), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT
         )
         return (moved.astype(np.float32) * self.shade).astype(np.uint8)
 
@@ -431,12 +472,12 @@ def punch_at(time_s, lines):
     for line_index, line in enumerate(lines):
         if time_s >= line["start"]:
             index = line_index
-    target = 0.07 if index % 2 else 0.0
-    previous = 0.07 if (index - 1) % 2 and index > 0 else 0.0
+    target = 0.045 if index % 2 else 0.0
+    previous = 0.045 if (index - 1) % 2 and index > 0 else 0.0
     return previous + (target - previous) * ease_out((time_s - lines[index]["start"]) / 0.2)
 
 
-def render_episode(episode, signoff):
+def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
     OUTPUT.mkdir(parents=True, exist_ok=True)
     work_dir = OUTPUT / "_work" / episode["id"]
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -445,17 +486,18 @@ def render_episode(episode, signoff):
     lines, track, total = build_audio(episode["narration"], work_dir)
     check_start = lines[find_check_line(episode)]["start"]
     end_start = lines[-1]["start"]
+    # The voice alone, on the episode's timeline: this is what a presenter clip is generated from.
+    write_wav(track, work_dir / "voice.wav")
     add_sound_design(track, total, check_start, end_start)
     wav_path = work_dir / "audio.wav"
     write_wav(track, wav_path)
 
-    presenter = Presenter()
+    presenter = Presenter(episode["id"])
     scam_card = render_card(episode["card"]["sender"], episode["card"]["text"], accent)
     check_card = render_card("THE 10-SECOND CHECK", episode["check"], accent, highlight=True)
-    badge = render_pill("AI HOST  ·  NOT A REAL PERSON", (12, 12, 16, 215), (255, 255, 255, 255))
     pillar = render_pill(episode["pillar"].upper(), accent + (240,), (12, 12, 16, 255), size=30)
     source_line = render_text_line("Source: " + episode["source"]["name"], 28, (214, 220, 232, 255))
-    end_card = render_end_card(signoff, episode["source"]["name"], accent)
+    end_card = render_end_card(signoff, handle, episode["source"]["name"], accent)
     chunks = caption_chunks(lines[:-1])
     caption_cache = {}
 
@@ -477,8 +519,7 @@ def render_episode(episode, signoff):
     for frame_index in range(total_frames):
         time_s = frame_index / FPS
         frame = presenter.frame(time_s, punch_at(time_s, lines))
-        overlay(frame, badge, 44, 150)
-        overlay(frame, pillar, 44, 232)
+        overlay(frame, pillar, 44, 150)
 
         if time_s < check_start:
             appear = ease_out((time_s - 0.05) / 0.35)
@@ -555,7 +596,7 @@ def render_episode(episode, signoff):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Render Not Real Vera episodes")
+    parser = argparse.ArgumentParser(description="Render Vera Checks episodes")
     parser.add_argument("episode", help="episode id such as ep01, or 'all'")
     arguments = parser.parse_args()
     data = json.loads((ROOT / "episodes.json").read_text(encoding="utf-8"))
@@ -563,7 +604,7 @@ def main():
     if not selected:
         raise SystemExit(f"no episode named {arguments.episode}")
     for episode in selected:
-        render_episode(episode, data["signoff"])
+        render_episode(episode, data["signoff"], data.get("handle", DEFAULT_HANDLE))
     return 0
 
 
