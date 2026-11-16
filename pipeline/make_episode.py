@@ -4,9 +4,13 @@
     python pipeline/make_episode.py all
 
 Presenter layer, first match wins: assets/presenter/<id>.mp4 (a talking-head clip made for that episode's own
-voice track, played in sync), assets/presenter.mp4 (a generic looped clip), then a still with camera motion.
-The still is that episode's own outfit picture, assets/outfits/<id>.jpg (tools/outfits.py), or assets/vera.jpg
-when the episode has none. The metadata file records which one was used.
+voice track, played in sync), assets/presenter.mp4 (a generic looped clip), then a still filmed by a moving
+camera (pipeline/camera.py). The still is that episode's own outfit picture, assets/outfits/<id>.jpg
+(tools/outfits.py), or assets/vera.jpg when the episode has none. The metadata file records which one was used.
+
+Captions are timed to the voice word by word (pipeline/word_timing.py) and the sound is mixed in
+pipeline/sound.py. Both helpers need the models fetched by tools/get_motion_models.py; without them the
+episode still renders, with estimated caption timing and a camera move without depth.
 """
 import argparse
 import asyncio
@@ -17,12 +21,18 @@ import os
 import subprocess
 import sys
 import wave
+import zlib
 from pathlib import Path
 
 import cv2
 import imageio_ffmpeg
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import camera  # noqa: E402
+import sound  # noqa: E402
+import word_timing  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -83,7 +93,7 @@ def voice_label():
 
 
 def speak_with_kokoro(text, wav_path):
-    """Speak one line with the local Kokoro model. It gives no word timings, so captions use estimates."""
+    """Speak one line with the local Kokoro model. It gives no word timings; build_audio measures them."""
     global _kokoro
     if _kokoro is None:
         if not (KOKORO_MODEL.exists() and KOKORO_VOICES.exists()):
@@ -173,20 +183,15 @@ def time_words(tokens, boundaries, duration):
     return spans
 
 
-def tone(frequency, length, decay):
-    time_axis = np.arange(int(length * SAMPLE_RATE)) / SAMPLE_RATE
-    return np.sin(2 * np.pi * frequency * time_axis) * np.exp(-time_axis / decay)
-
-
-def add_at(track, sound, at_seconds, gain):
+def add_at(track, clip, at_seconds, gain):
     start = int(at_seconds * SAMPLE_RATE)
-    end = min(len(track), start + len(sound))
+    end = min(len(track), start + len(clip))
     if end > start:
-        track[start:end] += sound[: end - start] * gain
+        track[start:end] += clip[: end - start] * gain
 
 
 def build_audio(narration, work_dir):
-    """Synthesize every line, lay them on one track with sound cues, and return the timeline."""
+    """Synthesize every line, time its words, lay the lines on one voice track, and return the timeline."""
     lines = []
     clips = []
     cursor = LEAD_IN
@@ -195,14 +200,22 @@ def build_audio(narration, work_dir):
         samples = trim_tail(decode_audio(audio_path))
         duration = len(samples) / SAMPLE_RATE
         tokens = text.split()
-        spans = time_words(tokens, boundaries, duration)
+        estimate = time_words(tokens, boundaries, duration)
+        spans, timing, placed = estimate, "service" if len(boundaries) == len(tokens) else "estimated", []
+        measured = None if timing == "service" else word_timing.align(tokens, samples, SAMPLE_RATE)
+        if measured is not None:
+            spans, placed = measured
+            timing = "aligned"
         lines.append(
             {
                 "text": text,
                 "start": cursor,
                 "end": cursor + duration,
                 "words": [(token, cursor + start, cursor + end) for token, (start, end) in zip(tokens, spans)],
-                "word_timing": "service" if len(boundaries) == len(tokens) else "estimated",
+                "word_timing": timing,
+                "placed": placed,
+                # How far the old word-length guess was from the measured start of each word that was heard.
+                "guess_errors": [abs(estimate[index][0] - spans[index][0]) for index, heard in enumerate(placed) if heard],
             }
         )
         clips.append((cursor, samples))
@@ -215,26 +228,18 @@ def build_audio(narration, work_dir):
     return lines, track, total
 
 
-def add_sound_design(track, total, check_start, end_start):
-    """Notification ding on the hook, a rising cue on the check, a soft low bed under everything."""
-    add_at(track, tone(880, 0.5, 0.11) + 0.6 * tone(1320, 0.5, 0.09), 0.02, 0.22)
-    add_at(track, tone(660, 0.25, 0.07), check_start - 0.16, 0.16)
-    add_at(track, tone(990, 0.45, 0.12), check_start - 0.04, 0.16)
-    add_at(track, tone(440, 0.9, 0.3) + 0.5 * tone(660, 0.9, 0.3), end_start, 0.10)
-    time_axis = np.arange(len(track)) / SAMPLE_RATE
-    bed = np.sin(2 * np.pi * 98.0 * time_axis) + 0.6 * np.sin(2 * np.pi * 146.8 * time_axis)
-    bed *= 0.5 + 0.5 * np.sin(2 * np.pi * time_axis / 6.0)
-    fade = np.clip(np.minimum(time_axis / 1.5, (total - time_axis) / 1.5), 0.0, 1.0)
-    track += (bed * fade * 0.014).astype(np.float32)
-    np.clip(track, -0.98, 0.98, out=track)
-
-
-def write_wav(track, path):
-    with wave.open(str(path), "wb") as handle:
-        handle.setnchannels(1)
-        handle.setsampwidth(2)
-        handle.setframerate(SAMPLE_RATE)
-        handle.writeframes((track * 32767).astype(np.int16).tobytes())
+def caption_sync_report(lines):
+    """How the caption words were timed, for the episode's metadata file."""
+    placed = [heard for line in lines for heard in line["placed"]]
+    errors = [error for line in lines for error in line["guess_errors"]]
+    words = sum(len(line["words"]) for line in lines)
+    return {
+        "words": words,
+        "words_timed_from_the_voice": int(sum(placed)),
+        "words_spaced_between_neighbours": words - int(sum(placed)),
+        "old_guess_mean_error_s": round(float(np.mean(errors)), 3) if errors else None,
+        "old_guess_max_error_s": round(float(np.max(errors)), 3) if errors else None,
+    }
 
 
 # ---------------------------------------------------------------- picture layers
@@ -372,7 +377,8 @@ class Presenter:
     1. assets/presenter/<episode id>.mp4: a talking clip made from that episode's voice track
        (tools/presenter_kit.py). It is played once, locked to the timeline, so the lips match the audio.
     2. assets/presenter.mp4: one generic clip, looped (no lip-sync to the words).
-    3. The still with camera motion only: assets/outfits/<episode id>.jpg, else assets/vera.jpg.
+    3. The still, filmed by a moving camera with depth parallax (pipeline/camera.py):
+       assets/outfits/<episode id>.jpg, else assets/vera.jpg.
     """
 
     def __init__(self, episode_id):
@@ -391,17 +397,39 @@ class Presenter:
         elif generic_clip.exists():
             self.capture = cv2.VideoCapture(str(generic_clip))
             self.mode = "looped presenter video without lip-sync (assets/presenter.mp4)"
-        else:
-            self.mode = "still portrait with camera motion (no lip-sync)"
         portrait_path = portrait_path_for(episode_id)
         if not portrait_path.exists():
             raise SystemExit("assets/vera.jpg is missing. Run: python pipeline/make_portrait.py")
         self.still = portrait_path.relative_to(ROOT).as_posix()
-        self.portrait = self.fit(np.asarray(Image.open(portrait_path).convert("RGB")))
+        picture = np.asarray(Image.open(portrait_path).convert("RGB"))
+        self.portrait = self.fit(picture)
+        self.rig = None
+        if self.capture is None:
+            self.rig = camera.StillRig(self.portrait, self.face_box(portrait_path, picture.shape))
+            self.mode = self.rig.describe()
         rows = np.arange(HEIGHT, dtype=np.float32)
         top = np.clip(0.72 + 0.28 * rows / 300.0, 0.0, 1.0)
         bottom = np.clip(1.0 - 0.88 * (rows - SHADE_START_ROW) / 500.0, 0.12, 1.0)
         self.shade = np.minimum(top, bottom).reshape(HEIGHT, 1, 1)
+
+    @staticmethod
+    def face_box(portrait_path, picture_shape):
+        """Her face in frame pixels, from the wardrobe record (tools/outfits.py), or None when not recorded."""
+        record_path = portrait_path.parent / "outfits.json"
+        if not record_path.exists():
+            return None
+        face = json.loads(record_path.read_text(encoding="utf-8")).get("face")
+        if not face:
+            return None
+        scale = max(WIDTH / picture_shape[1], HEIGHT / picture_shape[0])
+        left = (picture_shape[1] * scale - WIDTH) / 2
+        top = (picture_shape[0] * scale - HEIGHT) / 2
+        return (
+            face["center"][0] * scale - left,
+            face["center"][1] * scale - top,
+            face["half_width"] * scale,
+            face["half_height"] * scale,
+        )
 
     @staticmethod
     def fit(frame):
@@ -438,14 +466,11 @@ class Presenter:
             frame = self.read()
         return frame if frame is not None else self.portrait
 
-    def frame(self, time_s, punch):
-        zoom = 1.03 + 0.012 * math.sin(2 * math.pi * time_s / 11.0) + punch
-        center_x = WIDTH / 2 + 8 * math.sin(2 * math.pi * time_s / 17.0)
-        center_y = HEIGHT * 0.26
-        matrix = np.float32([[zoom, 0, (1 - zoom) * center_x], [0, zoom, (1 - zoom) * center_y]])
-        moved = cv2.warpAffine(
-            self.source_frame(time_s), matrix, (WIDTH, HEIGHT), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT
-        )
+    def frame(self, time_s, frame_index, path):
+        if self.rig is not None:
+            moved = self.rig.frame(path, frame_index)
+        else:
+            moved = camera.move_clip_frame(self.source_frame(time_s), path, frame_index)
         return (moved.astype(np.float32) * self.shade).astype(np.uint8)
 
 
@@ -476,17 +501,6 @@ def find_check_line(episode):
     return len(episode["narration"]) // 2
 
 
-def punch_at(time_s, lines):
-    """Alternate a small punch-in per spoken line, eased over 0.2 s, so the shot never sits still."""
-    index = 0
-    for line_index, line in enumerate(lines):
-        if time_s >= line["start"]:
-            index = line_index
-    target = 0.045 if index % 2 else 0.0
-    previous = 0.045 if (index - 1) % 2 and index > 0 else 0.0
-    return previous + (target - previous) * ease_out((time_s - lines[index]["start"]) / 0.2)
-
-
 def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
     OUTPUT.mkdir(parents=True, exist_ok=True)
     work_dir = OUTPUT / "_work" / episode["id"]
@@ -497,10 +511,9 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
     check_start = lines[find_check_line(episode)]["start"]
     end_start = lines[-1]["start"]
     # The voice alone, on the episode's timeline: this is what a presenter clip is generated from.
-    write_wav(track, work_dir / "voice.wav")
-    add_sound_design(track, total, check_start, end_start)
+    sound.write_wav(track, work_dir / "voice.wav")
     wav_path = work_dir / "audio.wav"
-    write_wav(track, wav_path)
+    track, sound_report = sound.mix_episode(track, total, check_start, end_start, episode["id"], wav_path)
 
     presenter = Presenter(episode["id"])
     scam_card = render_card(episode["card"]["sender"], episode["card"]["text"], accent)
@@ -517,18 +530,21 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
             imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-v", "error",
             "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{WIDTH}x{HEIGHT}", "-r", str(FPS), "-i", "-",
             "-i", str(wav_path),
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", "-shortest", str(video_path),
+            "-c:v", "libx264", "-preset", "fast", "-crf", "19", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-shortest", str(video_path),
         ],
         stdin=subprocess.PIPE,
     )
     total_frames = int(total * FPS)
+    camera_path = camera.CameraPath(
+        total_frames, FPS, [line["start"] for line in lines], check_start, zlib.crc32(episode["id"].encode("utf-8"))
+    )
     sheet_times = [1.2, (lines[2]["start"] + check_start) / 2, check_start + 1.6, end_start + 1.0]
     sheet_frames = {int(moment * FPS): None for moment in sheet_times}
 
     for frame_index in range(total_frames):
         time_s = frame_index / FPS
-        frame = presenter.frame(time_s, punch_at(time_s, lines))
+        frame = presenter.frame(time_s, frame_index, camera_path)
         overlay(frame, pillar, 44, 150)
 
         if time_s < check_start:
@@ -598,6 +614,9 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
         "caption_chunks": len(chunks),
         "max_words_per_caption": max(len(chunk) for chunk in chunks),
         "word_timing": sorted({line["word_timing"] for line in lines}),
+        "caption_sync": caption_sync_report(lines),
+        "sound": sound_report,
+        "camera": camera_path.smoothness(WIDTH, HEIGHT),
         "voice": voice_label(),
         "presenter": presenter.mode,
         "still": presenter.still,

@@ -36,9 +36,10 @@ CANDIDATES = ROOT / "assets" / "candidates"
 SERVICE = "AI Horde (aihorde.net), free volunteer service, anonymous key"
 MODEL = "Juggernaut XL"
 WIDTH, HEIGHT = 768, 1344
-BASE_SEEDS = [7, 21, 133]
+BASE_SEEDS = [27, 58, 204, 611]
 SCENE = (
-    "candid vertical photo of a fictional adult woman aged thirty, long wavy dark brown hair, "
+    "candid vertical photo of a strikingly beautiful fictional adult woman aged twenty-seven, "
+    "long glossy wavy dark brown hair, bright expressive eyes, polished natural makeup, "
     "warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, "
     "framed from the hips up, her head in the upper quarter of the frame, hourglass figure, {outfit}, "
     "{pose}, real photograph, natural skin texture, soft window daylight, 35mm, "
@@ -46,31 +47,40 @@ SCENE = (
 )
 BASE_OUTFIT = "fitted black V-neck top with a low neckline"
 BASE_POSE = "arms relaxed at her sides"
-# The base picture came out with her hands on her hips. Saying so keeps the repainted upper arms joined to
-# the forearms that are copied from the base. Long sleeves break that join (the model hangs the arm
-# straight down and the base forearm is left floating), so every outfit is sleeveless or short-sleeved.
+# The base picture (seed 611) has her arms hanging at her sides. The repaint redraws both arms completely
+# (see CLOTHING_POLYGON), so the pose says where they go; hands stay out of the picture because repainted
+# fingers are the most likely thing to come out wrong.
 # Each outfit also names what she wears below the top, otherwise a camisole comes out as nightwear.
-DRESSED_POSE = "both hands resting on her hips, elbows out"
+DRESSED_POSE = "arms relaxed at her sides, hands below the bottom edge of the frame"
 OUTFIT_BY_EPISODE = {
     "ep01": (
         "fitted black sleeveless V-neck top with a low neckline and a thin gold pendant necklace, "
         "tucked into black high-waisted trousers"
     ),
     "ep02": "deep red satin wrap blouse with a plunging V neckline, tied at the waist",
-    "ep03": "bright white ribbed-knit square-neck fitted top with a low neckline",
+    # ep03 and ep04 came out cropped with a bare midriff at first, and the worker's safety filter blanked
+    # both in the smoothing pass. The fix is more fabric, not another try. For ep04 "full-length blouse
+    # covering her stomach" was enough. For ep03 the same words still gave a crop top, so it is a one-piece
+    # dress: with no waistband there is nowhere for a gap to open.
+    "ep03": (
+        "fitted pure white ribbed-knit one-piece dress with short sleeves and a square neckline, "
+        "white fabric from the neckline down past the hips with no gap at the waist"
+    ),
     "ep04": (
-        "emerald green silk camisole with thin straps and a low neckline, "
-        "tucked into high-waisted cream trousers"
+        "emerald green satin wrap blouse with short sleeves and a V neckline, "
+        "full-length blouse covering her stomach, tucked into high-waisted cream trousers"
     ),
     "ep05": "fitted sweetheart-neckline corset-style top in dark denim with a delicate silver necklace",
 }
-# Clothing area of assets/outfits/base.jpg (seed 21) in base-picture pixels: the top with its sleeves and the
-# chest below the collarbone, down to the bottom edge of the frame. Face, forearms and room are outside it.
+# Repaint area of assets/outfits/base.jpg (seed 611) in base-picture pixels: everything below her
+# collarbone and shoulder line, across the full width and down to the bottom edge. That is the top, the
+# chest, the hair lying on the top, both arms and the room beside them. Face, neck and upper hair are outside it.
+# An earlier version stopped at mid upper arm (y = 880): the repainted upper arms came out narrower than the
+# base lower arms, which left a visible step. Repainting the whole arms leaves only the join at the
+# collarbone (skin on skin) and a join in the out-of-focus room at shoulder height.
 CLOTHING_POLYGON = [
-    (140, 475), (300, 500), (384, 512), (470, 500), (515, 462), (640, 462), (705, 530),
-    (752, 720), (748, 792), (645, 794), (612, 762), (590, 870), (588, 960), (610, 1050),
-    (630, 1150), (660, 1360), (115, 1360), (135, 1150), (160, 1050), (180, 960), (185, 870),
-    (178, 762), (170, 716), (60, 768), (28, 700), (60, 580), (100, 520),
+    (300, 640), (384, 652), (470, 648), (545, 640), (600, 585), (650, 558), (790, 632),
+    (790, 1370), (-22, 1370), (-22, 668), (130, 598), (200, 572),
 ]
 SUBMIT_GAP_SECONDS = 3  # the service allows 2 new jobs per second per address
 MASK_GROW = 16  # px the repaint area reaches past the polygon, so sleeve cuffs and hems are inside it
@@ -78,8 +88,8 @@ BLEND_GROW = 18  # px the blend reaches past the repaint area, so no old clothin
 BLEND_FEATHER = 9
 FINISH_STRENGTH = 0.4  # how far the smoothing pass may move away from the dressed picture (0 = not at all)
 # Face of assets/outfits/base.jpg in base-picture pixels: forehead to chin, without the hair.
-FACE_CENTER = (385, 282)
-FACE_HALF_WIDTH, FACE_HALF_HEIGHT = 98, 148
+FACE_CENTER = (402, 325)
+FACE_HALF_WIDTH, FACE_HALF_HEIGHT = 100, 150
 FACE_FEATHER = 14
 
 
@@ -111,6 +121,11 @@ def face_mask():
     )
     ImageDraw.Draw(mask).ellipse(box, fill=255)
     return mask.filter(ImageFilter.GaussianBlur(FACE_FEATHER))
+
+
+def face_record():
+    """Where her face is, for the camera in pipeline/camera.py (it keeps the face steady and sharp)."""
+    return {"center": list(FACE_CENTER), "half_width": FACE_HALF_WIDTH, "half_height": FACE_HALF_HEIGHT}
 
 
 def raw_path(episode_id):
@@ -155,6 +170,7 @@ def use_base(seed):
         "prompt": SCENE.format(outfit=BASE_OUTFIT, pose=BASE_POSE),
         "seed": seed,
         "size": [WIDTH, HEIGHT],
+        "face": face_record(),
         "outfits": {},
     }
     (OUTFITS / "outfits.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n")
@@ -253,6 +269,7 @@ def finish(episode_ids, seed, strength):
             smoothed.save(smooth_path(episode_id))
             Image.composite(base, smoothed, face).save(OUTFITS / f"{episode_id}.jpg", quality=93)
             record["outfits"].setdefault(episode_id, {})["finish"] = {"seed": seed, "strength": strength}
+            record["face"] = face_record()
             record_path.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n")
             print(f"{episode_id} finished", flush=True)
     if failed:

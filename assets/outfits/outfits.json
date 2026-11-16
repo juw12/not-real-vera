@@ -2,26 +2,33 @@
   "person": "fictional, AI-generated; not a real person",
   "service": "AI Horde (aihorde.net), free volunteer service, anonymous key",
   "model": "Juggernaut XL",
-  "prompt": "candid vertical photo of a fictional adult woman aged thirty, long wavy dark brown hair, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, fitted black V-neck top with a low neckline, arms relaxed at her sides, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
-  "seed": 21,
+  "prompt": "candid vertical photo of a strikingly beautiful fictional adult woman aged twenty-seven, long glossy wavy dark brown hair, bright expressive eyes, polished natural makeup, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, fitted black V-neck top with a low neckline, arms relaxed at her sides, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
+  "seed": 611,
   "size": [
     768,
     1344
   ],
+  "face": {
+    "center": [
+      402,
+      325
+    ],
+    "half_width": 100,
+    "half_height": 150
+  },
   "outfits": {
     "ep01": {
       "outfit": "fitted black sleeveless V-neck top with a low neckline and a thin gold pendant necklace, tucked into black high-waisted trousers",
-      "prompt": "candid vertical photo of a fictional adult woman aged thirty, long wavy dark brown hair, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, fitted black sleeveless V-neck top with a low neckline and a thin gold pendant necklace, tucked into black high-waisted trousers, both hands resting on her hips, elbows out, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
-      "seed": 5,
+      "prompt": "candid vertical photo of a strikingly beautiful fictional adult woman aged twenty-seven, long glossy wavy dark brown hair, bright expressive eyes, polished natural makeup, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, fitted black sleeveless V-neck top with a low neckline and a thin gold pendant necklace, tucked into black high-waisted trousers, arms relaxed at her sides, hands below the bottom edge of the frame, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
+      "seed": 11,
       "finish": {
-        "seed": 5,
+        "seed": 11,
         "strength": 0.4
-      },
-      "result_note": "faint horizontal line in the hair at shoulder height"
+      }
     },
     "ep02": {
       "outfit": "deep red satin wrap blouse with a plunging V neckline, tied at the waist",
-      "prompt": "candid vertical photo of a fictional adult woman aged thirty, long wavy dark brown hair, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, deep red satin wrap blouse with a plunging V neckline, tied at the waist, arms relaxed at her sides, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
+      "prompt": "candid vertical photo of a strikingly beautiful fictional adult woman aged twenty-seven, long glossy wavy dark brown hair, bright expressive eyes, polished natural makeup, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, deep red satin wrap blouse with a plunging V neckline, tied at the waist, arms relaxed at her sides, hands below the bottom edge of the frame, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
       "seed": 11,
       "finish": {
         "seed": 11,
@@ -29,28 +36,26 @@
       }
     },
     "ep03": {
-      "outfit": "bright white ribbed-knit square-neck fitted top with a low neckline",
-      "prompt": "candid vertical photo of a fictional adult woman aged thirty, long wavy dark brown hair, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, bright white ribbed-knit square-neck fitted top with a low neckline, both hands resting on her hips, elbows out, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
-      "seed": 5,
+      "outfit": "fitted pure white ribbed-knit one-piece dress with short sleeves and a square neckline, white fabric from the neckline down past the hips with no gap at the waist",
+      "prompt": "candid vertical photo of a strikingly beautiful fictional adult woman aged twenty-seven, long glossy wavy dark brown hair, bright expressive eyes, polished natural makeup, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, fitted pure white ribbed-knit one-piece dress with short sleeves and a square neckline, white fabric from the neckline down past the hips with no gap at the waist, arms relaxed at her sides, hands below the bottom edge of the frame, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
+      "seed": 11,
       "finish": {
-        "seed": 5,
+        "seed": 11,
         "strength": 0.4
-      },
-      "result_note": "came out as a white ribbed scoop-neck dress, not a square-neck top"
+      }
     },
     "ep04": {
-      "outfit": "emerald green silk camisole with thin straps and a low neckline, tucked into high-waisted cream trousers",
-      "prompt": "candid vertical photo of a fictional adult woman aged thirty, long wavy dark brown hair, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, emerald green silk camisole with thin straps and a low neckline, tucked into high-waisted cream trousers, both hands resting on her hips, elbows out, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
-      "seed": 5,
+      "outfit": "emerald green satin wrap blouse with short sleeves and a V neckline, full-length blouse covering her stomach, tucked into high-waisted cream trousers",
+      "prompt": "candid vertical photo of a strikingly beautiful fictional adult woman aged twenty-seven, long glossy wavy dark brown hair, bright expressive eyes, polished natural makeup, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, emerald green satin wrap blouse with short sleeves and a V neckline, full-length blouse covering her stomach, tucked into high-waisted cream trousers, arms relaxed at her sides, hands below the bottom edge of the frame, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
+      "seed": 11,
       "finish": {
-        "seed": 5,
+        "seed": 11,
         "strength": 0.4
-      },
-      "result_note": "faint horizontal line in the hair at shoulder height"
+      }
     },
     "ep05": {
       "outfit": "fitted sweetheart-neckline corset-style top in dark denim with a delicate silver necklace",
-      "prompt": "candid vertical photo of a fictional adult woman aged thirty, long wavy dark brown hair, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, fitted sweetheart-neckline corset-style top in dark denim with a delicate silver necklace, arms relaxed at her sides, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
+      "prompt": "candid vertical photo of a strikingly beautiful fictional adult woman aged twenty-seven, long glossy wavy dark brown hair, bright expressive eyes, polished natural makeup, warm confident smile, looking straight into the camera, standing in a bright modern apartment living room, framed from the hips up, her head in the upper quarter of the frame, hourglass figure, fitted sweetheart-neckline corset-style top in dark denim with a delicate silver necklace, arms relaxed at her sides, hands below the bottom edge of the frame, real photograph, natural skin texture, soft window daylight, 35mm, shallow depth of field",
       "seed": 11,
       "finish": {
         "seed": 11,

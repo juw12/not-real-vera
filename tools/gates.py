@@ -1,6 +1,6 @@
 """Objective gates for the Vera Checks (repo: not-real-vera) scripts and renders.
 
-    python tools/gates.py            # script gates and render gates
+    python tools/gates.py            # script gates and render gates (length, captions, caption timing, sound)
     python tools/gates.py --links    # also check that every source link answers HTTP 200
 """
 import argparse
@@ -13,6 +13,11 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent.parent
 OFFICIAL_DOMAINS = ("ftc.gov", "ic3.gov", "fbi.gov", "cisa.gov", "consumerfinance.gov")
 BROWSER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
+# Sound targets for a finished render: the level YouTube, Instagram and TikTok normalise to, with headroom
+# so the platforms' re-encoding does not clip.
+LOUDNESS_TARGET_LUFS = -14.0
+LOUDNESS_TOLERANCE = 0.5
+TRUE_PEAK_LIMIT_DBTP = -1.0
 # The script neither announces that the host is synthetic nor claims that she is a person.
 IDENTITY_CLAIM = re.compile(
     r"\bI'm (Vera, )?an AI\b|\bI am an AI\b|\bI'm not real\b|\bI'm real\b|\breal person\b"
@@ -124,6 +129,36 @@ def render_gate(data):
     return ("9 renders: 30-50 s, audible, captions <= 3 words", not failures, failures or f"{rendered} rendered")
 
 
+def sync_and_sound_gate(data):
+    """Captions follow the measured voice timing, and the mix sits at the level the platforms play at."""
+    name = "10 renders: every caption word timed from the voice, -14 LUFS +/- 0.5, true peak <= -1 dBTP"
+    failures = []
+    rendered = 0
+    for episode in data["episodes"]:
+        report_path = ROOT / "output" / f"{episode['id']}.json"
+        if not report_path.exists():
+            continue
+        rendered += 1
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        sync = report.get("caption_sync")
+        sound = report.get("sound")
+        if not sync or not sound:
+            failures.append(f"{episode['id']}: rendered before caption timing and sound were measured")
+            continue
+        problems = []
+        if sync["words_timed_from_the_voice"] < sync["words"]:
+            problems.append(f"{sync['words'] - sync['words_timed_from_the_voice']} words not timed from the voice")
+        if abs(sound["loudness_lufs"] - LOUDNESS_TARGET_LUFS) > LOUDNESS_TOLERANCE:
+            problems.append(f"loudness {sound['loudness_lufs']} LUFS")
+        if sound["true_peak_dbtp"] > TRUE_PEAK_LIMIT_DBTP:
+            problems.append(f"true peak {sound['true_peak_dbtp']} dBTP")
+        if problems:
+            failures.append(f"{episode['id']}: {', '.join(problems)}")
+    if rendered == 0:
+        return (name, False, ["nothing rendered yet"])
+    return (name, not failures, failures or f"{rendered} rendered")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--links", action="store_true", help="also fetch every source link")
@@ -133,6 +168,7 @@ def main():
     if arguments.links:
         results.append(link_gate(data))
     results.append(render_gate(data))
+    results.append(sync_and_sound_gate(data))
     for name, passed, detail in results:
         print(f"{'PASS' if passed else 'FAIL'}  {name}  {detail if detail else ''}")
     passed_count = sum(1 for _, passed, _ in results if passed)

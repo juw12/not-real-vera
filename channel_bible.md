@@ -145,13 +145,15 @@ An episode without an official page that we have opened and read does not ship. 
 
 1. Add the script to `episodes.json` (hook card, narration, check, source link, caption).
 2. `python tools/gates.py --links` must pass.
-3. `python pipeline/make_episode.py epNN` renders the short: local Kokoro synthetic voice (same voice every day, no network), sound cues, captions of at most 3 words with estimated word timing, source line. If `assets/presenter/epNN.mp4` exists it is used as the talking presenter, in sync with the voice.
+3. `python pipeline/make_episode.py epNN` renders the short: local Kokoro synthetic voice (same voice every day, no network), a generated music bed that drops under the voice, sound cues, a depth-parallax camera move over the presenter still, captions of at most 3 words with each word timed from the voice itself, source line. If `assets/presenter/epNN.mp4` exists it is used as the talking presenter, in sync with the voice.
 4. Watch it once. A human look is required before every post.
 5. `python pipeline/autopost.py post` (dry run), then `--live`, schedules it through Buffer to YouTube Shorts, Instagram Reels and TikTok.
 
-Wardrobe: Vera wears a different fitted top in each episode (`assets/outfits/epNN.jpg`, made by `python tools/outfits.py dress` and then `finish`). Glamorous and low-cut is in; lingerie, see-through and anything a platform would age-restrict is out. The face never changes; hair and room stay as close as the tool can keep them.
+Wardrobe: Vera is an adult in her late twenties and wears a different fitted top or dress in each episode (`assets/outfits/epNN.jpg`, made by `python tools/outfits.py dress` and then `finish`). Glamorous and low-cut is in; lingerie, see-through, bare midriff and anything a platform would age-restrict is out. The face never changes; hair and room stay as close as the tool can keep them.
 
-Current limits, stated plainly: the rendered episodes show Vera as a still picture with camera motion, so her lips, face and hands do not move, and one synthetic voice performs every part. A talking clip made from an episode's own voice track goes in `assets/presenter/epNN.mp4` and the renderer plays it in sync (`python tools/presenter_kit.py export epNN` writes the voice track).
+Current limits, stated plainly: the rendered episodes show Vera as one picture with a moving camera, depth, slight breathing and head sway. Her lips, eyes, expression and hands do not move, and one synthetic voice performs every part. A talking clip made from an episode's own voice track goes in `assets/presenter/epNN.mp4` and the renderer plays it in sync (`python tools/presenter_kit.py export epNN` writes the voice track).
+
+AI label: every post carries the platform's own AI-content label. It stays on. The platforms require it for a realistic generated person, and this channel's subject is not being fooled by fakes.
 
 ## 11. How it could earn (hypotheses, not promises)
 
