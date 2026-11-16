@@ -1,4 +1,4 @@
-"""Render one Vera Checks episode as a 1080x1920 short with voice, sound cues and short captions.
+"""Render one Vera Checks episode as a 1080x1920 short with voice, sound cues and live captions.
 
     python pipeline/make_episode.py ep01
     python pipeline/make_episode.py all
@@ -8,9 +8,15 @@ voice track, played in sync), assets/presenter.mp4 (a generic looped clip), then
 camera (pipeline/camera.py). The still is that episode's own outfit picture, assets/outfits/<id>.jpg
 (tools/outfits.py), or assets/vera.jpg when the episode has none. The metadata file records which one was used.
 
-Captions are timed to the voice word by word (pipeline/word_timing.py) and the sound is mixed in
-pipeline/sound.py. Both helpers need the models fetched by tools/get_motion_models.py; without them the
-episode still renders, with estimated caption timing and a camera move without depth.
+Text on the picture stays short: a caption of at most three words that appears word by word as each word
+is spoken (pipeline/word_timing.py), one short chip, a short source credit and the sign-off. The scam's
+wording is spoken, not shown, and the alert number and link live in the post caption.
+
+On the still, her mouth follows the voice (pipeline/lipsync.py drives pipeline/face_rig.py), she blinks and
+moves her head, and every spoken line is its own camera shot (pipeline/camera.py). The sound is mixed in
+pipeline/sound.py. Caption timing and depth need the models fetched by tools/get_motion_models.py, and the
+face needs assets/outfits/landmarks.json (tools/face_landmarks.py); without them the episode still renders,
+with estimated caption timing, no depth, or a face that does not move.
 """
 import argparse
 import asyncio
@@ -31,6 +37,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import camera  # noqa: E402
+import face_rig  # noqa: E402
+import lipsync  # noqa: E402
 import sound  # noqa: E402
 import word_timing  # noqa: E402
 
@@ -52,9 +60,11 @@ LEAD_IN = 0.45
 LINE_GAP = 0.20
 TAIL = 1.1
 MAX_CAPTION_WORDS = 3
-CARD_BOTTOM = 1330
+CHIP_BOTTOM = 1300
 CAPTION_CENTER_Y = 1420
 SOURCE_LINE_Y = 1500
+CAPTION_POP_SCALES = (1.16, 1.09, 1.04)  # the word being spoken starts this much larger, then settles
+END_CARD_DARKENING = 0.4
 SHADE_START_ROW = 1050.0
 DEFAULT_HANDLE = "@verachecks"
 FONT_FILES = [r"C:\Windows\Fonts\segoeuib.ttf", r"C:\Windows\Fonts\arialbd.ttf"]
@@ -90,6 +100,20 @@ def voice_label():
     if TTS_ENGINE == "edge":
         return f"edge-tts {EDGE_VOICE} (online)"
     return f"kokoro-onnx {KOKORO_VOICE} (local, synthetic voice)"
+
+
+def word_sounds():
+    """Return a function word -> its sounds (IPA), from the voice engine's own phonemizer, or None.
+
+    It runs on this PC. Without it the mouth still moves, from the letters and the loudness of the voice."""
+    try:
+        from kokoro_onnx.tokenizer import Tokenizer
+
+        tokenizer = Tokenizer()
+        tokenizer.phonemize("check", "en-us")
+    except Exception:  # no phonemizer on this PC: lipsync falls back to letters
+        return None
+    return lambda word: tokenizer.phonemize(word, "en-us")
 
 
 def speak_with_kokoro(text, wav_path):
@@ -245,53 +269,6 @@ def caption_sync_report(lines):
 # ---------------------------------------------------------------- picture layers
 
 
-def wrap_text(text, font, max_width):
-    lines = []
-    current = ""
-    for word in text.split():
-        candidate = (current + " " + word).strip()
-        if font.getlength(candidate) <= max_width or not current:
-            current = candidate
-        else:
-            lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-    return lines
-
-
-def render_card(header, body, accent, highlight=False):
-    """A message card (dark) or the 10-second check card (accent colour)."""
-    width = 968
-    padding = 44
-    header_font = load_font(34)
-    body_font = load_font(58 if highlight else 48)
-    body_lines = wrap_text(body, body_font, width - 2 * padding)
-    line_height = int(body_font.size * 1.26)
-    height = padding + 46 + 22 + line_height * len(body_lines) + padding
-    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    if highlight:
-        draw.rounded_rectangle((0, 0, width - 1, height - 1), radius=46, fill=accent + (246,))
-        text_fill = (14, 14, 18, 255)
-        header_fill = (14, 14, 18, 215)
-        dot_fill = (14, 14, 18, 255)
-    else:
-        draw.rounded_rectangle(
-            (0, 0, width - 1, height - 1), radius=46, fill=(16, 18, 26, 236), outline=accent + (255,), width=3
-        )
-        text_fill = (255, 255, 255, 255)
-        header_fill = (186, 192, 208, 255)
-        dot_fill = accent + (255,)
-    draw.ellipse((padding, padding + 8, padding + 28, padding + 36), fill=dot_fill)
-    draw.text((padding + 44, padding), header, font=header_font, fill=header_fill)
-    y = padding + 46 + 22
-    for line in body_lines:
-        draw.text((padding, y), line, font=body_font, fill=text_fill)
-        y += line_height
-    return np.asarray(image)
-
-
 def render_pill(text, fill, text_fill, size=32):
     font = load_font(size)
     text_width = int(font.getlength(text))
@@ -302,21 +279,40 @@ def render_pill(text, fill, text_fill, size=32):
     return np.asarray(image)
 
 
-def render_caption(tokens, active_index, accent):
+def render_chip(text, accent, highlight=False):
+    """One short line in a pill: the scam in a few words (dark), or what to do about it (accent colour)."""
+    if highlight:
+        return render_pill(text, accent + (246,), (14, 14, 18, 255), size=54)
+    return render_pill(text, (16, 18, 26, 236), (255, 255, 255, 255), size=54)
+
+
+def render_caption(tokens, spoken, pop_scale, accent):
+    """The caption for one chunk with only its first `spoken` words drawn. Every word keeps its place, so
+    nothing shifts when the next word appears. The newest word is in the accent colour, pop_scale times larger."""
     size = 94
     font = load_font(size)
-    while size > 56 and font.getlength(" ".join(tokens)) > 960:
+    while size > 56 and font.getlength(" ".join(tokens)) > 940:
         size -= 6
         font = load_font(size)
     space = font.getlength(" ")
     widths = [font.getlength(token) for token in tokens]
     total = sum(widths) + space * (len(tokens) - 1)
-    image = Image.new("RGBA", (int(total) + 80, size + 80), (0, 0, 0, 0))
+    margin = 70
+    image = Image.new("RGBA", (int(total) + 2 * margin, size + 2 * margin), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
-    x = 40.0
-    for index, token in enumerate(tokens):
-        fill = accent + (255,) if index == active_index else (255, 255, 255, 255)
-        draw.text((x, 30), token, font=font, fill=fill, stroke_width=9, stroke_fill=(8, 8, 12, 255))
+    x = float(margin)
+    for index, token in enumerate(tokens[:spoken]):
+        newest = index == spoken - 1
+        word_font = load_font(round(size * pop_scale)) if newest and pop_scale != 1.0 else font
+        draw.text(
+            (x + widths[index] / 2, image.height / 2),
+            token,
+            font=word_font,
+            fill=accent + (255,) if newest else (255, 255, 255, 255),
+            anchor="mm",
+            stroke_width=9,
+            stroke_fill=(8, 8, 12, 255),
+        )
         x += widths[index] + space
     return np.asarray(image)
 
@@ -331,22 +327,28 @@ def render_text_line(text, size, fill, max_width=980):
     return np.asarray(image)
 
 
-def render_end_card(signoff, handle, source_name, accent):
-    image = Image.new("RGBA", (WIDTH, 760), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
+def signoff_parts(signoff):
+    return [part.strip() + "." for part in signoff.split(".") if part.strip()]
+
+
+def render_end_card(signoff, handle, source_credit, accent):
+    """Return ([(layer, y) per sign-off sentence], footer layer, footer y). The renderer shows each sentence
+    when she starts saying it."""
     big = load_font(104)
-    parts = [part.strip() + "." for part in signoff.split(".") if part.strip()]
-    y = 0
+    parts = signoff_parts(signoff)
+    layers = []
     for index, part in enumerate(parts):
+        image = Image.new("RGBA", (WIDTH, 136), (0, 0, 0, 0))
         fill = accent + (255,) if index == len(parts) - 1 else (255, 255, 255, 255)
-        draw.text((WIDTH // 2, y + 60), part, font=big, fill=fill, anchor="mm", stroke_width=6, stroke_fill=(8, 8, 12, 255))
-        y += 136
-    draw.text((WIDTH // 2, y + 70), handle, font=load_font(56), fill=(255, 255, 255, 255), anchor="mm")
-    draw.text((WIDTH // 2, y + 150), "Advice from the official source below.", font=load_font(32), fill=(200, 206, 220, 255), anchor="mm")
-    source_font = load_font(30)
-    for row, line in enumerate(wrap_text("Source: " + source_name, source_font, 940)[:3]):
-        draw.text((WIDTH // 2, y + 220 + row * 42), line, font=source_font, fill=(200, 206, 220, 255), anchor="mm")
-    return np.asarray(image)
+        ImageDraw.Draw(image).text(
+            (WIDTH // 2, 68), part, font=big, fill=fill, anchor="mm", stroke_width=6, stroke_fill=(8, 8, 12, 255)
+        )
+        layers.append((np.asarray(image), 136 * index))
+    footer = Image.new("RGBA", (WIDTH, 190), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(footer)
+    draw.text((WIDTH // 2, 60), handle, font=load_font(56), fill=(255, 255, 255, 255), anchor="mm")
+    draw.text((WIDTH // 2, 140), source_credit, font=load_font(32), fill=(200, 206, 220, 255), anchor="mm")
+    return layers, np.asarray(footer), 136 * len(parts) + 10
 
 
 def overlay(frame, layer, x, y, opacity=1.0):
@@ -377,8 +379,9 @@ class Presenter:
     1. assets/presenter/<episode id>.mp4: a talking clip made from that episode's voice track
        (tools/presenter_kit.py). It is played once, locked to the timeline, so the lips match the audio.
     2. assets/presenter.mp4: one generic clip, looped (no lip-sync to the words).
-    3. The still, filmed by a moving camera with depth parallax (pipeline/camera.py):
-       assets/outfits/<episode id>.jpg, else assets/vera.jpg.
+    3. The still, filmed by a moving camera with depth parallax (pipeline/camera.py), with her mouth,
+       eyelids, eyebrows and head moving (pipeline/face_rig.py): assets/outfits/<episode id>.jpg, else
+       assets/vera.jpg.
     """
 
     def __init__(self, episode_id):
@@ -405,7 +408,11 @@ class Presenter:
         self.portrait = self.fit(picture)
         self.rig = None
         if self.capture is None:
-            self.rig = camera.StillRig(self.portrait, self.face_box(portrait_path, picture.shape))
+            self.rig = camera.StillRig(
+                self.portrait,
+                self.face_box(portrait_path, picture.shape),
+                self.face_points(portrait_path, picture.shape),
+            )
             self.mode = self.rig.describe()
         rows = np.arange(HEIGHT, dtype=np.float32)
         top = np.clip(0.72 + 0.28 * rows / 300.0, 0.0, 1.0)
@@ -430,6 +437,30 @@ class Presenter:
             face["half_width"] * scale,
             face["half_height"] * scale,
         )
+
+    @staticmethod
+    def face_points(portrait_path, picture_shape):
+        """Her 98 face landmarks in frame pixels (tools/face_landmarks.py), or None when not recorded for
+        this picture at this size."""
+        record_path = ASSETS / "outfits" / "landmarks.json"
+        if not record_path.exists():
+            return None
+        key = portrait_path.stem if portrait_path.parent.name == "outfits" else "base"
+        record = json.loads(record_path.read_text(encoding="utf-8")).get(key)
+        if not record or list(record["picture_size"]) != [picture_shape[1], picture_shape[0]]:
+            return None
+        # The same enlargement and centre crop as fit().
+        scale = max(WIDTH / picture_shape[1], HEIGHT / picture_shape[0])
+        fitted_width = math.ceil(picture_shape[1] * scale)
+        fitted_height = math.ceil(picture_shape[0] * scale)
+        points = np.asarray(record["points"], dtype=np.float64)
+        x = (points[:, 0] + 0.5) * fitted_width / picture_shape[1] - 0.5 - (fitted_width - WIDTH) // 2
+        y = (points[:, 1] + 0.5) * fitted_height / picture_shape[0] - 0.5 - (fitted_height - HEIGHT) // 2
+        return np.stack([x, y], axis=1)
+
+    @property
+    def face_moves(self):
+        return self.rig is not None and self.rig.face_rig is not None
 
     @staticmethod
     def fit(frame):
@@ -466,9 +497,10 @@ class Presenter:
             frame = self.read()
         return frame if frame is not None else self.portrait
 
-    def frame(self, time_s, frame_index, path):
+    def frame(self, time_s, frame_index, path, face=None):
+        """face: (mouth_open, mouth_wide, blink, brow) for this frame; used only by the still."""
         if self.rig is not None:
-            moved = self.rig.frame(path, frame_index)
+            moved = self.rig.frame(path, frame_index, face)
         else:
             moved = camera.move_clip_frame(self.source_frame(time_s), path, frame_index)
         return (moved.astype(np.float32) * self.shade).astype(np.uint8)
@@ -501,26 +533,59 @@ def find_check_line(episode):
     return len(episode["narration"]) // 2
 
 
+def on_screen_text(episode, signoff, handle, source_credit, chunks):
+    """Every piece of text the episode draws on the picture, with its longest item, for the metadata file."""
+    items = [episode["pillar"].upper(), episode["chip"], episode["check_chip"], source_credit]
+    items += signoff_parts(signoff) + [handle]
+    captions = [" ".join(word[0] for word in chunk) for chunk in chunks]
+    return {
+        "items": items,
+        "max_characters": max(len(item) for item in items),
+        "max_words": max(len(item.split()) for item in items),
+        "captions_appear_word_by_word": True,
+        "max_words_per_caption": max(len(chunk) for chunk in chunks),
+        "longest_caption_characters": max(len(caption) for caption in captions),
+    }
+
+
 def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
     OUTPUT.mkdir(parents=True, exist_ok=True)
     work_dir = OUTPUT / "_work" / episode["id"]
     work_dir.mkdir(parents=True, exist_ok=True)
     accent = hex_to_rgb(episode["accent"])
+    seed = zlib.crc32(episode["id"].encode("utf-8"))
 
-    lines, track, total = build_audio(episode["narration"], work_dir)
+    lines, voice, total = build_audio(episode["narration"], work_dir)
     check_start = lines[find_check_line(episode)]["start"]
     end_start = lines[-1]["start"]
-    # The voice alone, on the episode's timeline: this is what a presenter clip is generated from.
-    sound.write_wav(track, work_dir / "voice.wav")
+    line_starts = [line["start"] for line in lines]
+    total_frames = int(total * FPS)
+    # The voice alone, on the episode's timeline: the mouth is driven from it, and a presenter clip is
+    # generated from it.
+    sound.write_wav(voice, work_dir / "voice.wav")
     wav_path = work_dir / "audio.wav"
-    track, sound_report = sound.mix_episode(track, total, check_start, end_start, episode["id"], wav_path)
+    track, sound_report = sound.mix_episode(voice, total, check_start, end_start, episode["id"], wav_path)
 
     presenter = Presenter(episode["id"])
-    scam_card = render_card(episode["card"]["sender"], episode["card"]["text"], accent)
-    check_card = render_card("THE 10-SECOND CHECK", episode["check"], accent, highlight=True)
+    phonemize = word_sounds() if presenter.face_moves else None
+    mouth_open, mouth_wide, speech = lipsync.mouth_track(lines, voice, SAMPLE_RATE, FPS, total_frames, phonemize)
+    question_ends = [line["end"] for line in lines if line["text"].rstrip().endswith("?")]
+    blink, brow, blink_count = face_rig.expression_track(total_frames, FPS, line_starts, question_ends, seed)
+    camera_path = camera.CameraPath(total_frames, FPS, line_starts, check_start, seed, speech, end_start)
+
+    source_credit = "Source: " + episode["source"]["short"]
     pillar = render_pill(episode["pillar"].upper(), accent + (240,), (12, 12, 16, 255), size=30)
-    source_line = render_text_line("Source: " + episode["source"]["name"], 28, (214, 220, 232, 255))
-    end_card = render_end_card(signoff, handle, episode["source"]["name"], accent)
+    chip = render_chip(episode["chip"], accent)
+    check_chip = render_chip(episode["check_chip"], accent, highlight=True)
+    source_line = render_text_line(source_credit, 30, (214, 220, 232, 255))
+    end_parts, end_footer, end_footer_y = render_end_card(signoff, handle, source_credit, accent)
+    # Each sentence of the sign-off appears when she starts saying it.
+    end_words = lines[-1]["words"]
+    part_starts = []
+    word_index = 0
+    for part in signoff_parts(signoff):
+        part_starts.append(end_words[min(word_index, len(end_words) - 1)][1])
+        word_index += len(part.split())
     chunks = caption_chunks(lines[:-1])
     caption_cache = {}
 
@@ -535,50 +600,51 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
         ],
         stdin=subprocess.PIPE,
     )
-    total_frames = int(total * FPS)
-    camera_path = camera.CameraPath(
-        total_frames, FPS, [line["start"] for line in lines], check_start, zlib.crc32(episode["id"].encode("utf-8"))
-    )
     sheet_times = [1.2, (lines[2]["start"] + check_start) / 2, check_start + 1.6, end_start + 1.0]
     sheet_frames = {int(moment * FPS): None for moment in sheet_times}
+    meter = camera.MotionMeter()
 
     for frame_index in range(total_frames):
         time_s = frame_index / FPS
-        frame = presenter.frame(time_s, frame_index, camera_path)
+        face = (mouth_open[frame_index], mouth_wide[frame_index], blink[frame_index], brow[frame_index])
+        frame = presenter.frame(time_s, frame_index, camera_path, face)
         overlay(frame, pillar, 44, 150)
 
         if time_s < check_start:
-            appear = ease_out((time_s - 0.05) / 0.35)
-            leave = 1.0 - ease_out((time_s - (check_start - 0.25)) / 0.25)
-            card_y = CARD_BOTTOM - scam_card.shape[0] + (1.0 - appear) * 90
-            overlay(frame, scam_card, (WIDTH - scam_card.shape[1]) // 2, card_y, appear * leave)
+            appear = ease_out((time_s - 0.05) / 0.3)
+            leave = 1.0 - ease_out((time_s - (check_start - 0.2)) / 0.2)
+            chip_y = CHIP_BOTTOM - chip.shape[0] + (1.0 - appear) * 60
+            overlay(frame, chip, (WIDTH - chip.shape[1]) // 2, chip_y, appear * leave)
         elif time_s < end_start:
-            appear = ease_out((time_s - check_start) / 0.35)
-            card_y = CARD_BOTTOM - check_card.shape[0] + (1.0 - appear) * 90
-            overlay(frame, check_card, (WIDTH - check_card.shape[1]) // 2, card_y, appear)
+            appear = ease_out((time_s - check_start) / 0.3)
+            chip_y = CHIP_BOTTOM - check_chip.shape[0] + (1.0 - appear) * 60
+            overlay(frame, check_chip, (WIDTH - check_chip.shape[1]) // 2, chip_y, appear)
 
         if time_s < end_start:
             for chunk_index, chunk in enumerate(chunks):
                 chunk_end = chunks[chunk_index + 1][0][1] if chunk_index + 1 < len(chunks) else end_start
                 if chunk[0][1] <= time_s < min(chunk_end, chunk[-1][2] + 0.6):
-                    active = 0
-                    for word_index, (_, word_start, _) in enumerate(chunk):
-                        if time_s >= word_start:
-                            active = word_index
-                    key = (chunk_index, active)
+                    # Live caption: only the words she has started to say, the newest one popping in.
+                    spoken = sum(1 for _, word_start, _ in chunk if time_s >= word_start)
+                    since_word = int((time_s - chunk[spoken - 1][1]) * FPS + 1e-6)
+                    pop = CAPTION_POP_SCALES[since_word] if since_word < len(CAPTION_POP_SCALES) else 1.0
+                    key = (chunk_index, spoken, pop)
                     if key not in caption_cache:
-                        caption_cache[key] = render_caption([word[0] for word in chunk], active, accent)
+                        caption_cache[key] = render_caption([word[0] for word in chunk], spoken, pop, accent)
                     caption = caption_cache[key]
                     overlay(frame, caption, (WIDTH - caption.shape[1]) // 2, CAPTION_CENTER_Y - caption.shape[0] // 2)
                     break
             overlay(frame, source_line, (WIDTH - source_line.shape[1]) // 2, SOURCE_LINE_Y)
         else:
             reveal = ease_out((time_s - end_start) / 0.4)
-            frame[:] = (frame.astype(np.float32) * (1.0 - 0.74 * reveal)).astype(np.uint8)
-            overlay(frame, end_card, 0, 560, reveal)
+            frame[:] = (frame.astype(np.float32) * (1.0 - END_CARD_DARKENING * reveal)).astype(np.uint8)
+            for (layer, layer_y), part_start in zip(end_parts, part_starts):
+                overlay(frame, layer, 0, 1000 + layer_y, ease_out((time_s - part_start) / 0.2))
+            overlay(frame, end_footer, 0, 1000 + end_footer_y, reveal)
 
         bar_width = int(WIDTH * (frame_index + 1) / total_frames)
         frame[HEIGHT - 10:HEIGHT, :bar_width] = accent
+        meter.add(frame)
         if frame_index in sheet_frames:
             sheet_frames[frame_index] = frame.copy()
         encoder.stdin.write(frame.tobytes())
@@ -601,6 +667,18 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
     portrait_record = {} if uses_outfit_still else json.loads(
         (ASSETS / "vera.source.json").read_text(encoding="utf-8")
     )
+    if presenter.face_moves:
+        lip_sync = {
+            "method": "rule-based mouth shapes from the words' sounds and the loudness of the voice, drawn by "
+            "warping the still (pipeline/lipsync.py, pipeline/face_rig.py); not a neural talking-head model",
+            "sounds_from": "the voice engine's phonemizer" if phonemize is not None else "letters (no phonemizer)",
+            **lipsync.sync_report(mouth_open, speech, FPS),
+            "face": presenter.rig.face_rig.notes,
+        }
+    elif presenter.synced:
+        lip_sync = {"method": "presenter clip generated from this episode's voice track"}
+    else:
+        lip_sync = {"method": "none"}
     report = {
         "id": episode["id"],
         "title": episode["title"],
@@ -615,6 +693,10 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
         "max_words_per_caption": max(len(chunk) for chunk in chunks),
         "word_timing": sorted({line["word_timing"] for line in lines}),
         "caption_sync": caption_sync_report(lines),
+        "on_screen_text": on_screen_text(episode, signoff, handle, source_credit, chunks),
+        "lip_sync": lip_sync,
+        "blinks": blink_count if presenter.face_moves else 0,
+        "picture_motion": meter.report(FPS),
         "sound": sound_report,
         "camera": camera_path.smoothness(WIDTH, HEIGHT),
         "voice": voice_label(),

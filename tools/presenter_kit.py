@@ -4,6 +4,10 @@
     python tools/presenter_kit.py sadtalker ep01   # free local lip-sync (CPU, slow, face only)
     python tools/presenter_kit.py status           # which episodes have a clip
 
+Without a clip, make_episode.py already moves the still's mouth, eyelids, eyebrows and head with the voice
+(pipeline/lipsync.py, pipeline/face_rig.py). That is rule-based. A clip from a neural avatar tool looks more
+like a person talking and replaces it.
+
 A presenter clip is a video of Vera saying one episode's voice track. make_episode.py plays
 assets/presenter/<id>.mp4 locked to the timeline, so the clip must be made from that episode's
 own voice.wav and start at 0:00 of it.

@@ -36,10 +36,10 @@ Fixed in every episode, so it is recognisably one show:
 
 | Element | Rule |
 |---|---|
-| Frame one | The real-looking scam message is on screen with a notification sound. |
+| Frame one | A short whoosh and a chip of at most five words that names the scam ("FAKE TOLL TEXT"). The scam's wording is spoken, not shown as a block of text. |
 | First line | Reacts to that message with a stake or a surprise. It is never a call to action and never the pillar name. |
 | Second beat | "I'm Vera" and the angle, within the first two lines. Nothing about what she is. |
-| The 10-second check | One action, doable right now, nothing to buy. Shown as a bright card. |
+| The 10-second check | One action, doable right now, nothing to buy. The chip changes to the check in at most five words ("DON'T TAP") while she says it. |
 | Close | Sign-off line, handle, the alert it came from. |
 
 What changes: each pillar has its own structure, so a week of episodes does not feel like one template.
@@ -52,7 +52,7 @@ What changes: each pillar has its own structure, so a week of episodes does not 
 | Send this to your parents | Vera plays the caller, then gives one sentence a parent can remember | Aggressive, then plain |
 | The first 60 minutes | Emergency checklist in order, then Vera plays the follow-up scammer | Brisk, kind |
 
-Hard limits: 85-125 spoken words; captions of at most 3 words; one scam per video; one check card per video.
+Hard limits: 85-125 spoken words; captions of at most 3 words that appear word by word as she says them; nothing on screen longer than 26 characters or 5 words; one scam per video; one check per video.
 
 ## 5. Five pillars
 
@@ -70,20 +70,20 @@ That is 7 episodes a week, one per day, with no pillar repeating on consecutive 
 
 These rules are checked by `tools/gates.py` before anything is posted.
 
-- A different scam, a different on-screen message and a different official alert in every episode.
+- A different scam, a different chip and a different official alert in every episode.
 - No two episodes open with the same first sentence.
-- Each pillar has its own structure (section 4), accent colour and card type (text message, incoming call, voicemail, bank alert).
+- Each pillar has its own structure (section 4), accent colour and message type (text message, incoming call, voicemail, bank alert).
 - Every episode has sound: voice, a notification cue on the hook, a rising cue on the check.
 - Post captions stay under 300 characters, name the alert number, and carry its link. They say nothing about how the host is made.
 
 ## 7. Compliance and trust
 
-- **On screen:** the pillar name, the source line and the handle. No badge about the host.
+- **On screen:** the pillar name, the scam chip, the live caption, a short source credit ("Source: FBI IC3") and, at the end, the sign-off and the handle. No sentences to read, no badge about the host.
 - **Platform AI labels (below) stay on.** `pipeline/autopost.py` sets them on every post and a test fails if one is missing. Switching them off is a decision for the channel owner, with the platform rules in hand, not a default.
 - **YouTube:** switch on the altered or synthetic content disclosure for every upload.
 - **TikTok:** switch on the AI-generated content label.
 - **Instagram:** add the AI info label.
-- **Sources:** only official consumer-protection or law-enforcement pages (FBI IC3, FTC, CISA, CFPB, or the local equivalent), and only pages we have opened and read. The alert number is on screen; the alert number and link are in the caption.
+- **Sources:** only official consumer-protection or law-enforcement pages (FBI IC3, FTC, CISA, CFPB, or the local equivalent), and only pages we have opened and read. The agency is credited on screen; the alert number and link are in the post caption.
 - **Traceability:** every "do this" sentence in a script must be findable in the cited alert. Vera's own colour (how a scammer builds the text, the "delete" ruling) is framed as her reading or her ruling, not as the agency's advice.
 - **Never:** show a real person's face or voice as a deepfake example, name a real company as the scammer, show a working scam link (on-screen links use the reserved `.example` domain), or tell viewers to "fight back".
 - **Viewer submissions:** comments only, with names, numbers and links removed. No private messages asking for screenshots.
@@ -143,15 +143,15 @@ An episode without an official page that we have opened and read does not ship. 
 
 ## 10. Production pipeline
 
-1. Add the script to `episodes.json` (hook card, narration, check, source link, caption).
+1. Add the script to `episodes.json` (scam chip, check chip, narration, check, source link and short source credit, caption).
 2. `python tools/gates.py --links` must pass.
-3. `python pipeline/make_episode.py epNN` renders the short: local Kokoro synthetic voice (same voice every day, no network), a generated music bed that drops under the voice, sound cues, a depth-parallax camera move over the presenter still, captions of at most 3 words with each word timed from the voice itself, source line. If `assets/presenter/epNN.mp4` exists it is used as the talking presenter, in sync with the voice.
+3. `python pipeline/make_episode.py epNN` renders the short: local Kokoro synthetic voice (same voice every day, no network), a generated music bed that drops under the voice, sound cues, a jump-cut depth-parallax camera that pushes in on the sign-off, over the presenter still, whose mouth, eyelids, eyebrows and head move with the voice, captions of at most 3 words that appear word by word as she says them, a short source credit. If `assets/presenter/epNN.mp4` exists it is used as the talking presenter, in sync with the voice.
 4. Watch it once. A human look is required before every post.
 5. `python pipeline/autopost.py post` (dry run), then `--live`, schedules it through Buffer to YouTube Shorts, Instagram Reels and TikTok.
 
 Wardrobe: Vera is an adult in her late twenties and wears a different fitted top or dress in each episode (`assets/outfits/epNN.jpg`, made by `python tools/outfits.py dress` and then `finish`). Glamorous and low-cut is in; lingerie, see-through, bare midriff and anything a platform would age-restrict is out. The face never changes; hair and room stay as close as the tool can keep them.
 
-Current limits, stated plainly: the rendered episodes show Vera as one picture with a moving camera, depth, slight breathing and head sway. Her lips, eyes, expression and hands do not move, and one synthetic voice performs every part. A talking clip made from an episode's own voice track goes in `assets/presenter/epNN.mp4` and the renderer plays it in sync (`python tools/presenter_kit.py export epNN` writes the voice track).
+Current limits, stated plainly: the rendered episodes show Vera as one picture per episode that is warped frame by frame. Her mouth follows the voice with rule-based mouth shapes, she blinks, raises her eyebrows, and her head shifts, tilts and nods; this is not a neural talking-head model. Her hands and body do not gesture, her head cannot turn, the tongue and lower teeth are not drawn, and one synthetic voice performs every part. A talking clip made from an episode's own voice track goes in `assets/presenter/epNN.mp4` and the renderer plays it in sync instead (`python tools/presenter_kit.py export epNN` writes the voice track).
 
 AI label: every post carries the platform's own AI-content label. It stays on. The platforms require it for a realistic generated person, and this channel's subject is not being fooled by fakes.
 

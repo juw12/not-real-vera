@@ -13,6 +13,8 @@
         "sender": "Unknown number",
         "text": "State Toll Service: We've noticed an outstanding toll amount of $12.51 on your record. To avoid a late fee of $50.00, visit tollpay-secure.example to settle your balance."
       },
+      "chip": "FAKE TOLL TEXT",
+      "check_chip": "DON'T TAP",
       "narration": [
         "Twelve dollars and fifty-one cents. Too small to argue about, which is the whole trick.",
         "This text is fake. I'm Vera, and here's how a scammer builds it.",
@@ -27,6 +29,7 @@
       ],
       "check": "Don't tap. Look up your account on the toll service's real website.",
       "source": {
+        "short": "FBI IC3",
         "name": "FBI IC3 alert I-041224-PSA: road toll smishing texts",
         "url": "https://www.ic3.gov/PSA/2024/PSA240412"
       },
@@ -49,6 +52,8 @@
         "sender": "Incoming call: unknown number",
         "text": "Mom, it's me. I crashed the car and they're holding me. I need bail money. Please don't tell Dad."
       },
+      "chip": "CLONED VOICE CALL",
+      "check_chip": "ASK THE SECRET WORD",
       "narration": [
         "Mom, I crashed the car. I need bail money right now. Please don't tell Dad.",
         "That's the script. I'm Vera, and criminals now use AI to fake a loved one's voice in a crisis.",
@@ -65,6 +70,7 @@
       "check": "Ask for the family secret word. No word? Hang up and call them back.",
       "check_from": 6,
       "source": {
+        "short": "FBI IC3",
         "name": "FBI IC3 alert I-120324-PSA: generative AI in financial fraud",
         "url": "https://www.ic3.gov/PSA/2024/PSA241203"
       },
@@ -87,6 +93,8 @@
         "sender": "Unknown number",
         "text": "Hi David, are we still on for golf this Saturday?"
       },
+      "chip": "WRONG-NUMBER TEXT",
+      "check_chip": "NEVER MET? DON'T INVEST",
       "narration": [
         "You're not David. You don't play golf. So do you owe this stranger a polite reply?",
         "I'm Vera, and my ruling is delete. No reply.",
@@ -101,6 +109,7 @@
       ],
       "check": "Never met them in person? Never invest on their advice.",
       "source": {
+        "short": "FBI IC3",
         "name": "FBI IC3 alert I-031423-PSA: cryptocurrency investment schemes",
         "url": "https://www.ic3.gov/PSA/2023/PSA230314"
       },
@@ -123,6 +132,8 @@
         "sender": "Voicemail: County Sheriff's Office",
         "text": "This is Deputy Collins. You missed jury duty and a warrant has been issued. Call back today to pay the fine and avoid arrest."
       },
+      "chip": "FAKE DEPUTY CALL",
+      "check_chip": "HANG UP. CALL BACK",
       "narration": [
         "You missed jury duty. There is a warrant for your arrest. Do not hang up.",
         "Scared? That was me, Vera, playing a fake deputy.",
@@ -138,6 +149,7 @@
       ],
       "check": "Payment demanded by phone? Hang up. Call the office's public number yourself.",
       "source": {
+        "short": "FBI IC3",
         "name": "FBI IC3 alert I-091726-PSA: scammers impersonating law enforcement",
         "url": "https://www.ic3.gov/PSA/2026/PSA260917"
       },
@@ -160,6 +172,8 @@
         "sender": "Bank alert",
         "text": "Transfer sent: $2,400 to a new payee. If this wasn't you, contact us."
       },
+      "chip": "MONEY JUST LEFT",
+      "check_chip": "CALL YOUR BANK NOW",
       "narration": [
         "Twenty-four hundred dollars just left your account, to a name you don't know. Do this, in order.",
         "I'm Vera. Skip the shame. Speed is what counts.",
@@ -176,6 +190,7 @@
       "check": "Call your bank now. Say: this was fraud, recall the payment.",
       "check_from": 2,
       "source": {
+        "short": "FBI IC3",
         "name": "FBI IC3 alert I-112525-PSA: account takeover fraud",
         "url": "https://www.ic3.gov/PSA/2025/PSA251125"
       },
