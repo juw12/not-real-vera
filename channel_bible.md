@@ -149,7 +149,9 @@ An episode without an official page that we have opened and read does not ship. 
 4. Watch it once. A human look is required before every post.
 5. `python pipeline/autopost.py post` (dry run), then `--live`, schedules it through Buffer to YouTube Shorts, Instagram Reels and TikTok.
 
-Current limits, stated plainly: the rendered episodes show Vera as a still portrait with camera motion, so her lips, face and hands do not move, and one synthetic voice performs every part. A talking clip made from an episode's own voice track goes in `assets/presenter/epNN.mp4` and the renderer plays it in sync (`python tools/presenter_kit.py export epNN` writes the voice track).
+Wardrobe: Vera wears a different fitted top in each episode (`assets/outfits/epNN.jpg`, made by `python tools/outfits.py dress` and then `finish`). Glamorous and low-cut is in; lingerie, see-through and anything a platform would age-restrict is out. The face never changes; hair and room stay as close as the tool can keep them.
+
+Current limits, stated plainly: the rendered episodes show Vera as a still picture with camera motion, so her lips, face and hands do not move, and one synthetic voice performs every part. A talking clip made from an episode's own voice track goes in `assets/presenter/epNN.mp4` and the renderer plays it in sync (`python tools/presenter_kit.py export epNN` writes the voice track).
 
 ## 11. How it could earn (hypotheses, not promises)
 

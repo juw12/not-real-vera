@@ -4,8 +4,9 @@
     python pipeline/make_episode.py all
 
 Presenter layer, first match wins: assets/presenter/<id>.mp4 (a talking-head clip made for that episode's own
-voice track, played in sync), assets/presenter.mp4 (a generic looped clip), then the still assets/vera.jpg with
-camera motion. The metadata file records which one was used.
+voice track, played in sync), assets/presenter.mp4 (a generic looped clip), then a still with camera motion.
+The still is that episode's own outfit picture, assets/outfits/<id>.jpg (tools/outfits.py), or assets/vera.jpg
+when the episode has none. The metadata file records which one was used.
 """
 import argparse
 import asyncio
@@ -41,10 +42,18 @@ LEAD_IN = 0.45
 LINE_GAP = 0.20
 TAIL = 1.1
 MAX_CAPTION_WORDS = 3
-CARD_BOTTOM = 1250
-CAPTION_CENTER_Y = 1370
+CARD_BOTTOM = 1330
+CAPTION_CENTER_Y = 1420
+SOURCE_LINE_Y = 1500
+SHADE_START_ROW = 1050.0
 DEFAULT_HANDLE = "@verachecks"
 FONT_FILES = [r"C:\Windows\Fonts\segoeuib.ttf", r"C:\Windows\Fonts\arialbd.ttf"]
+
+
+def portrait_path_for(episode_id):
+    """The still for one episode: its own outfit picture when there is one, otherwise the shared portrait."""
+    outfit_still = ASSETS / "outfits" / f"{episode_id}.jpg"
+    return outfit_still if outfit_still.exists() else ASSETS / "vera.jpg"
 
 
 def load_font(size):
@@ -363,7 +372,7 @@ class Presenter:
     1. assets/presenter/<episode id>.mp4: a talking clip made from that episode's voice track
        (tools/presenter_kit.py). It is played once, locked to the timeline, so the lips match the audio.
     2. assets/presenter.mp4: one generic clip, looped (no lip-sync to the words).
-    3. assets/vera.jpg: the still portrait with camera motion only.
+    3. The still with camera motion only: assets/outfits/<episode id>.jpg, else assets/vera.jpg.
     """
 
     def __init__(self, episode_id):
@@ -384,13 +393,14 @@ class Presenter:
             self.mode = "looped presenter video without lip-sync (assets/presenter.mp4)"
         else:
             self.mode = "still portrait with camera motion (no lip-sync)"
-        portrait_path = ASSETS / "vera.jpg"
+        portrait_path = portrait_path_for(episode_id)
         if not portrait_path.exists():
             raise SystemExit("assets/vera.jpg is missing. Run: python pipeline/make_portrait.py")
+        self.still = portrait_path.relative_to(ROOT).as_posix()
         self.portrait = self.fit(np.asarray(Image.open(portrait_path).convert("RGB")))
         rows = np.arange(HEIGHT, dtype=np.float32)
         top = np.clip(0.72 + 0.28 * rows / 300.0, 0.0, 1.0)
-        bottom = np.clip(1.0 - 0.88 * (rows - 900.0) / 560.0, 0.12, 1.0)
+        bottom = np.clip(1.0 - 0.88 * (rows - SHADE_START_ROW) / 500.0, 0.12, 1.0)
         self.shade = np.minimum(top, bottom).reshape(HEIGHT, 1, 1)
 
     @staticmethod
@@ -545,7 +555,7 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
                     caption = caption_cache[key]
                     overlay(frame, caption, (WIDTH - caption.shape[1]) // 2, CAPTION_CENTER_Y - caption.shape[0] // 2)
                     break
-            overlay(frame, source_line, (WIDTH - source_line.shape[1]) // 2, 1486)
+            overlay(frame, source_line, (WIDTH - source_line.shape[1]) // 2, SOURCE_LINE_Y)
         else:
             reveal = ease_out((time_s - end_start) / 0.4)
             frame[:] = (frame.astype(np.float32) * (1.0 - 0.74 * reveal)).astype(np.uint8)
@@ -571,7 +581,10 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
     probe = subprocess.run(
         [imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(video_path)], capture_output=True, text=True, errors="replace"
     ).stderr
-    portrait_record = json.loads((ASSETS / "vera.source.json").read_text(encoding="utf-8"))
+    uses_outfit_still = presenter.still.startswith("assets/outfits/")
+    portrait_record = {} if uses_outfit_still else json.loads(
+        (ASSETS / "vera.source.json").read_text(encoding="utf-8")
+    )
     report = {
         "id": episode["id"],
         "title": episode["title"],
@@ -587,6 +600,7 @@ def render_episode(episode, signoff, handle=DEFAULT_HANDLE):
         "word_timing": sorted({line["word_timing"] for line in lines}),
         "voice": voice_label(),
         "presenter": presenter.mode,
+        "still": presenter.still,
         "portrait_is_placeholder": bool(portrait_record.get("placeholder")),
         "source": episode["source"],
     }

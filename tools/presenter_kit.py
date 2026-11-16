@@ -9,7 +9,8 @@ assets/presenter/<id>.mp4 locked to the timeline, so the clip must be made from 
 own voice.wav and start at 0:00 of it.
 
 "export" writes output/_work/<id>/voice.wav (voice only, including the short lead-in) and tells you
-where the portrait is. Give both to any audio-driven avatar tool, then save its result as
+which picture belongs to that episode (its outfit still, assets/outfits/<id>.jpg, when there is one).
+Give both to any audio-driven avatar tool, then save its result as
 assets/presenter/<id>.mp4 and render the episode again.
 
 "sadtalker" does the same job on this PC with the open-source SadTalker model in .presenter/
@@ -34,7 +35,6 @@ SADTALKER = PRESENTER_HOME / "SadTalker"
 VENV_PYTHON = PRESENTER_HOME / "venv" / "Scripts" / "python.exe"
 FFMPEG_DIR = PRESENTER_HOME / "bin"
 CLIPS = ASSETS / "presenter"
-PORTRAIT = ASSETS / "vera.jpg"
 
 
 def load_episodes(selector):
@@ -62,13 +62,19 @@ def export_voice(episode):
     return voice_path
 
 
+def portrait_for(episode):
+    import make_episode
+
+    return make_episode.portrait_path_for(episode["id"])
+
+
 def command_export(episodes):
     for episode in episodes:
         voice_path = export_voice(episode)
         print(f"{episode['id']}: {voice_path}  ({wav_seconds(voice_path):.1f} s)")
+        print(f"      picture: {portrait_for(episode)}")
         print(f"      save the finished clip as {CLIPS / (episode['id'] + '.mp4')}")
-    print(f"portrait: {PORTRAIT}")
-    print("Use an audio-driven avatar tool: portrait + voice.wav in, one vertical talking clip out.")
+    print("Use an audio-driven avatar tool: picture + voice.wav in, one vertical talking clip out.")
     print("Keep the full length of the audio and do not trim the start, or the lips will drift.")
     return 0
 
@@ -103,7 +109,7 @@ def command_sadtalker(episodes):
             [
                 str(VENV_PYTHON), "inference.py",
                 "--driven_audio", str(voice_path),
-                "--source_image", str(PORTRAIT),
+                "--source_image", str(portrait_for(episode)),
                 "--result_dir", str(result_dir),
                 "--preprocess", "full",
                 "--still",
