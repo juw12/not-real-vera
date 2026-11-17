@@ -11,8 +11,9 @@ This repo holds the whole channel as files: the niche research, the channel rule
 the renderer that turns a script into a vertical video, and the tool that schedules approved episodes to
 YouTube Shorts, Instagram Reels and TikTok through Buffer.
 
-**Status: nothing has been posted.** The episodes are rendered locally and wait for a human to watch and
-approve them.
+**Status: cancelled on 2026-11-17. Nothing was ever posted.** This repo is the one remaining copy of the
+project. The local working files, the voice and depth models and the five rendered videos were deleted;
+the videos can be rendered again from this repo with the commands below.
 
 ## What is in here
 
